@@ -26,16 +26,22 @@ class APIDataCollector:
         collector = requests.get(f"{self.api_url}/{end_point}").json()
         all_data = []
         total_records = min(len(collector), self.max_records)   
+
         for start in range(0, total_records, self.batch_size):
             end = min(start + self.batch_size, total_records)
             batch = collector[start:end]
             all_data.extend(batch)
-            time.sleep(1)  # To respect API rate limits
+
+            # To respect API rate limits
+            time.sleep(1)  
+
         return all_data
 
     def save_data(self, data: List[Dict], file_name: str) -> Path:
         """Save collected data to a JSON file"""
+
         file_path = self.data_dir / file_name
+        
         with open(file_path, "w") as f:
             json.dump(data, f, indent=4)
         return file_path
