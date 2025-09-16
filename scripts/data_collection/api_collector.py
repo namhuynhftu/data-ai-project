@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time 
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -23,6 +24,7 @@ class APIDataCollector:
     
     def collect_data(self, end_point: str) -> List[Dict]:
         """Collect data from the API endpoint"""
+
         collector = requests.get(f"{self.api_url}/{end_point}").json()
         all_data = []
         total_records = min(len(collector), self.max_records)   
@@ -40,8 +42,9 @@ class APIDataCollector:
     def save_data(self, data: List[Dict], file_name: str) -> Path:
         """Save collected data to a JSON file"""
 
-        file_path = self.data_dir / file_name
-        
+        file_date = datetime.now().strftime("%Y%m%d")
+        file_path = self.data_dir / f"{file_name}_{file_date}.json"
+
         with open(file_path, "w") as f:
             json.dump(data, f, indent=4)
         return file_path
@@ -52,7 +55,7 @@ def main():
 
     try:
         data = collector.collect_data("/users")
-        file_path = collector.save_data(data, "user_data.json")
+        file_path = collector.save_data(data, "user_data")
         logging.info(f"Data successfully saved to {file_path}")
     except Exception as e:
         logging.error(f"An error occurred: {e}") 
