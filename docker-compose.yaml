@@ -1,0 +1,45 @@
+services:
+  mysql_data_source:
+    image: mysql:8.0
+    container_name: mysql_data_source
+    volumes:
+      - ./data/database/mysql_data:/var/lib/mysql
+      - ./db_scripts/mysql-data/scripts:/docker-entrypoint-initdb.d
+
+    ports: 
+      - "3306:3306"
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - de_network
+    restart: unless-stopped
+
+  postgres_dw:
+    image: postgres:15
+    container_name: postgres_dw
+    volumes:
+      - ./db_scripts/postgres-data/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./data/database/postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - de_network
+
+networks:
+  de_network:
+    driver: bridge
+    name: de_network
+
+volumes:
+  mysql_data:
+    driver: local

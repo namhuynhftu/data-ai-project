@@ -25,3 +25,13 @@ venv/
 
 # OS files
 .DS_Store
+
+
+# Mysql dump files
+*.sock
+data/database/mysql_data/mysql.sock
+
+# Other MySQL runtime files
+*.pid
+*.err
+*.log

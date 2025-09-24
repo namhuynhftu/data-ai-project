@@ -1,0 +1,25 @@
+# AI Agent Configuration
+#
+# This file contains rules and guidelines for AI assistants working in this project
+
+[protected_files]
+# These files should never be modified by AI agents
+.env
+env_example.txt
+
+[rationale]
+# Environment files (.env and env_example.txt) are protected because:
+# 1. They may contain sensitive information
+# 2. env_example.txt serves as a template and should be manually maintained
+# 3. .env contains actual configuration values specific to the local environment
+
+[allowed_actions]
+# AI agents can:
+# - Read these files to understand the structure
+# - Suggest changes to be made manually by the developer
+# - Reference these files in documentation
+#
+# AI agents must not:
+# - Modify these files directly
+# - Create new environment files
+# - Delete or rename these files
