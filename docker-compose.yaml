@@ -35,7 +35,7 @@ services:
     container_name: postgres_dw
     volumes:
       - ./psql_db/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./data_source/postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     environment:
@@ -45,6 +45,18 @@ services:
     networks:
       - de_network
 
+  minio:
+    image: minio/minio:latest # Or a specific version, e.g., minio/minio:RELEASE.2024-09-26T00-00-00Z
+    ports:
+      - "9000:9000" # S3 API port
+      - "9001:9001" # MinIO Console port
+    volumes:
+      - minio_data:/data # Mount a named volume for persistent data storage
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER} # Replace with your desired username
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD} # Replace with your desired strong password
+    command: server --console-address ":9001" /data
+    
 networks:
   de_network:
     driver: bridge
@@ -53,3 +65,5 @@ networks:
 volumes:
   mysql_run:
   mysql_data:
+  postgres_data:
+  minio_data:
