@@ -16,6 +16,14 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS;
 
+-- Import geolocation data
+LOAD DATA INFILE '/var/lib/data/olist_geolocation_dataset.csv'
+INTO TABLE olist_geolocation_dataset
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+
 -- Import product categories
 LOAD DATA INFILE '/var/lib/data/product_category_name_translation.csv'
 INTO TABLE product_category_name_translation
