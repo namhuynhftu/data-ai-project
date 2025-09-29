@@ -116,8 +116,9 @@ def load_data_to_minio(data_frame, context: Optional[Any] = None, run_config: Op
         table_name = run_config.get('source_tbl')
         
         # Create partitioned path for better organization
+        bucket_name = 'raw_data'  # Raw layer bucket
         object_path = (
-            f"bronze/mysql/{schema_name}/{table_name}/"
+            f"{bucket_name}/{schema_name}/{table_name}/"
             f"year={timestamp.year}/month={timestamp.month:02d}/day={timestamp.day:02d}/"
             f"{table_name}_{timestamp.strftime('%Y%m%d_%H%M%S')}.parquet"
         )
@@ -135,14 +136,14 @@ def load_data_to_minio(data_frame, context: Optional[Any] = None, run_config: Op
         # Load data to MinIO using context manager
         with get_data_loader("minio", minio_params) as minio_loader:
             load_params = {
-                'bucket_name': 'bronze',  # Bronze layer bucket
+                'bucket_name': f'{bucket_name}',  # Raw layer bucket
                 'object_path': object_path
             }
             
             rows_loaded = minio_loader.load_data(data_frame, load_params)
             log.info(f"Successfully loaded {rows_loaded} rows to MinIO")
             
-            return f"s3://bronze/{object_path}"
+            return f"s3://{bucket_name}/{object_path}"
     
     except Exception as e:
         log.error(f"Failed to load data to MinIO: {e}")

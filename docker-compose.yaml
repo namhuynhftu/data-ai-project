@@ -8,7 +8,7 @@ services:
       - mysql_data:/var/lib/mysql
       - mysql_run:/var/run/mysqld
       - ./data_source/brazilian-ecommerce:/var/lib/data:ro
-      - ./mysql_db/certs:/etc/mysql/certs:ro
+      - ./infra/mysql_db/certs:/etc/mysql/certs:ro
 
     command: >
       --character-set-server=utf8mb4 
@@ -34,7 +34,7 @@ services:
     image: postgres:15
     container_name: postgres_dw
     volumes:
-      - ./psql_db/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infra/psql_db/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
