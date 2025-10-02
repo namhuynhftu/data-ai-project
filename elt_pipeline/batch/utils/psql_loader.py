@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine
 
-from .data_loader import DataLoader
+from elt_pipeline.batch.utils.data_loader import DataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,7 @@ class PSQLLoader(DataLoader):
 
     def extract_data(self, sql: str) -> pd.DataFrame:
         """Extract data from PostgreSQL database"""
-        conn = self.get_db_connection()
-        df = pd.read_sql(sql, conn)
-        return df
+        pass
 
     def load_data(self, pd_data: pd.DataFrame, params: dict) -> int:
         """Load data into PostgreSQL database"""

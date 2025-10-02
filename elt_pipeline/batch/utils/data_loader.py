@@ -10,22 +10,19 @@ class DataLoader(ABC):
         self.params = params
         self._connection = None
 
-    @abstractmethod
     def get_db_connection(self) -> Any:
         """Establish and return a database connection."""
         pass
     
-    @abstractmethod
+
     def extract_data(self, sql: str) -> pd.DataFrame:
         """Extract data from the database using the provided SQL query."""
         pass
 
-    @abstractmethod
     def load_data(self, pd_data: pd.DataFrame, params: Dict[str, Any]) -> int:
         """Load pandas DataFrame to destination."""
         pass
     
-    @abstractmethod
     def get_watermark(self, table_name: str, watermark: str) -> Optional[str]:
         """Get watermark value for incremental loading."""
         pass
@@ -42,11 +39,5 @@ class DataLoader(ABC):
                 self._connection.close()
             except Exception:
                 pass  # Ignore cleanup errors
-    def load_data(self, pd_data: pd.DataFrame, params: dict) -> int:
-        """Load data into the database."""
-        pass
 
-    @abstractmethod
-    def get_watermark(self, table_name, watermark: str) -> str:
-        """Get the watermark for the specified table."""
-        pass
+

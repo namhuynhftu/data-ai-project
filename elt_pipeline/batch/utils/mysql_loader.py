@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, text
 import pymysql
 from typing import Dict, Any, Optional
 
-from .data_loader import DataLoader
+from elt_pipeline.batch.utils.data_loader import DataLoader
 
 
 class MySQLLoader(DataLoader):
@@ -15,7 +15,7 @@ class MySQLLoader(DataLoader):
         self.logger = logging.getLogger(self.__class__.__name__)
         self._engine = None
 
-    def get_db_connection(self):
+    def get_db_connection(self, params: Dict[str, Any] = None) -> Any:
         """Establish MySQL connection."""
         try:
             if self._engine is None:
@@ -47,22 +47,31 @@ class MySQLLoader(DataLoader):
     def extract_data(self, sql: str) -> pd.DataFrame:
         """Extract data from MySQL database"""
         try:
-            self.logger.info(f"Executing SQL: {sql}")
+            # Use pymysql directly for better compatibility with SSL
+            import pymysql
+            import ssl
             
-            # Use direct pymysql connection for pandas
+            # Create SSL context for MySQL connection
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
             connection = pymysql.connect(
                 host=self.params['host'],
-                port=self.params['port'],
+                port=self.params['port'], 
                 user=self.params['user'],
                 password=self.params['password'],
                 database=self.params['database'],
-                ssl={'check_hostname': False, 'verify_mode': 0}
+                charset='utf8mb4',
+                ssl=ssl_context,
+                ssl_verify_cert=False,
+                ssl_verify_identity=False
             )
             
-            df = pd.read_sql(sql, connection)
+            df = pd.read_sql(sql, con=connection)
             connection.close()
-                
-            self.logger.info(f"Successfully extracted {len(df)} rows")
+            
+            self.logger.info(f"Successfully extracted {len(df)} rows from database")
             return df
         except Exception as e:
             self.logger.error(f"Data extraction failed: {e}")
@@ -70,33 +79,19 @@ class MySQLLoader(DataLoader):
     
     def load_data(self, pd_data: pd.DataFrame, params: Dict[str, Any]) -> int:
         """Load DataFrame to MySQL database"""
-        try:
-            engine = self.get_db_connection()
-            
-            # Use the engine directly for to_sql, which handles connections properly
-            pd_data.to_sql(
-                name=params['table_name'],
-                con=engine,
-                if_exists=params.get('if_exists', 'append'),
-                index=False,
-                chunksize=params.get('chunksize', 1000)
-            )
-            
-            self.logger.info(f"Loaded {len(pd_data)} rows to MySQL")
-            return len(pd_data)
-        except Exception as e:
-            self.logger.error(f"Data loading failed: {e}")
-            raise
+        pass
     
     def get_watermark(self, table_name: str, watermark: str) -> Optional[str]:
         """Get watermark value for incremental loading"""
         try:
-            sql = f"SELECT MAX({watermark}) FROM {table_name}"
-            result = self.extract_data(sql)
-            return str(result.iloc[0, 0]) if not result.empty and result.iloc[0, 0] is not None else None
+            engine = self.get_db_connection()
+            query = text(f"SELECT MAX({watermark}) AS max_watermark FROM {table_name}")
+            with engine.connect() as conn:
+                result = conn.execute(query).fetchone()
+                return result['max_watermark'] if result and result['max_watermark'] is not None else None
         except Exception as e:
-            self.logger.error(f"Watermark retrieval failed: {e}")
-            return None
+            self.logger.error(f"Failed to get watermark: {e}")
+            raise
 
     def __enter__(self):
         """Context manager entry."""
