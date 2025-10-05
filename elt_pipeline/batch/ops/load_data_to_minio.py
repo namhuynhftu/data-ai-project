@@ -13,7 +13,7 @@ from minio.error import S3Error
 
 from elt_pipeline.batch.utils.minio_loader import MinIOLoader
 
-def load_data_to_minio(extracted_data: Dict[str, Any]) -> None:
+def load_data_to_minio(extracted_data: Dict[str, Any]):
     """Load data to MinIO."""
     minio_loader = MinIOLoader(extracted_data["minio_target_storage"])
     minio_client = minio_loader.get_db_connection()
@@ -42,4 +42,8 @@ def load_data_to_minio(extracted_data: Dict[str, Any]) -> None:
         logging.info(f"Successfully loaded {rows_loaded} rows to MinIO bucket '{bucket_name}' as file '{file_name}'")
     else:
         logging.warning("No data loaded to MinIO")
-    return
+    return {
+        "bucket": bucket_name,
+        "file_name": file_name,
+        "rows_loaded": rows_loaded
+    }

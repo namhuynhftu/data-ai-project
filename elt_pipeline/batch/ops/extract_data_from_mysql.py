@@ -15,42 +15,6 @@ from elt_pipeline.batch.utils.mysql_loader import MySQLLoader
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_state_file_path(table_name: str) -> str:
-    """Get the state file path for a table."""
-    state_dir = "elt_pipeline/batch/state"
-    os.makedirs(state_dir, exist_ok=True)
-    return os.path.join(state_dir, f"{table_name}_state.json")
-
-def load_table_state(table_name: str) -> Optional[str]:
-    """Load the last loaded timestamp for a table."""
-    state_file = get_state_file_path(table_name)
-    if os.path.exists(state_file):
-        try:
-            with open(state_file, 'r') as f:
-                state = json.load(f)
-                last_loaded = state.get('last_loaded_at')
-                logger.info(f"Loaded state for {table_name}: last_loaded_at = {last_loaded}")
-                return last_loaded
-        except Exception as e:
-            logger.warning(f"Could not load state for {table_name}: {e}")
-    return None
-
-def save_table_state(table_name: str, loaded_at: str, row_count: int = 0):
-    """Save the last loaded timestamp for a table."""
-    state_file = get_state_file_path(table_name)
-    state = {
-        'table_name': table_name,
-        'last_loaded_at': loaded_at,
-        'row_count': row_count,
-        'updated_at': datetime.now().isoformat()
-    }
-    try:
-        with open(state_file, 'w') as f:
-            json.dump(state, f, indent=2)
-        logger.info(f"Saved state for {table_name}: last_loaded_at = {loaded_at}")
-    except Exception as e:
-        logger.error(f"Could not save state for {table_name}: {e}")
-
 
 
 def load_run_config(config_path: str) -> Dict[str, Any]:
@@ -87,6 +51,7 @@ def load_run_config(config_path: str) -> Dict[str, Any]:
         "password": os.getenv("SNOWFLAKE_PASSWORD"),
         "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
         "database": os.getenv("SNOWFLAKE_DATABASE"),
+        "schema": os.getenv("SNOWFLAKE_SCHEMA", "RAW_DATA"),  # Default to RAW_DATA schema
         "role": os.getenv("SNOWFLAKE_ROLE")
     }
 
@@ -101,7 +66,6 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
     """Extract data from MySQL database based on run configuration."""
     source_db_params = run_config["data_source_config"]
     table_config = run_config["current_table"]
-    table_name = table_config.get("source_table")
     
     # Initialize MySQL loader with database parameters
     mysql_loader = MySQLLoader(source_db_params)
@@ -109,33 +73,26 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
     # Construct SQL query
     sql = f"""
     SELECT * 
-    FROM {table_name}
+    FROM {table_config.get("source_table")}
     WHERE 1=1
 """
-    
-    # Load the last loaded timestamp from state
+    # Choose extract strategy 
+    loaded_at = table_config.get("loaded_at", "1970-01-01 00:00:00")
     strategy = table_config.get("strategy", "full_load")
-    loaded_at = None
-    new_watermark = None
-    
     if strategy == "incremental_by_watermark":
-        # Load previous state
-        loaded_at = load_table_state(table_name)
-        watermark_column = table_config.get("watermark_column")
-        
-        if loaded_at is None:
-            logger.info(f"Incremental load for {table_name} - first time, performing full load")
-            # Get the current max watermark to save as state after successful load
+        if loaded_at is None: 
+            logger.info("Incremental load for first time, performing full load")
+            watermark_column = table_config.get("watermark_column")
             if watermark_column:
-                new_watermark = mysql_loader.get_watermark(table_name, watermark_column)
+                watermark_value = mysql_loader.get_watermark(table_config.get("source_table"), watermark_column)
+            loaded_at = watermark_value if watermark_value is not None else "1970-01-01 00:00:00"
         else:
-            logger.info(f"Incremental load for {table_name} since {loaded_at}")
+            logger.info(f"Incremental load since {loaded_at}")
+            watermark_column = table_config.get("watermark_column")
             if watermark_column:
                 sql += f" AND {watermark_column} > '{loaded_at}'"
-                # Get the new max watermark for this incremental load
-                new_watermark = mysql_loader.get_watermark(table_name, watermark_column)
     elif strategy == "full_load":
-        logger.info(f"Performing full load for {table_name}")
+        logger.info("Performing full load")
 
     logger.info(f"Executing SQL: {sql}")
     
@@ -145,10 +102,7 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
     return {
         "data": pd_data,
         "table_config": table_config,
-        "table_name": table_name,
         "loaded_at": loaded_at,
-        "new_watermark": new_watermark,
-        "strategy": strategy,
         "minio_target_storage": run_config["minio_target_storage"],
         "snowflake_target_storage": run_config["snowflake_target_storage"]
     }

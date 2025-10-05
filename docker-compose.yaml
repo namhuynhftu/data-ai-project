@@ -46,6 +46,7 @@ services:
       - de_network
 
   minio:
+    container_name: data_lake_minio
     image: minio/minio:latest # Or a specific version, e.g., minio/minio:RELEASE.2024-09-26T00-00-00Z
     ports:
       - "9000:9000" # S3 API port
