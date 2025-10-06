@@ -5,8 +5,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Import your scripts
-from elt_pipeline.data_collection.api_collector import main as collect_api_data
-from elt_pipeline.data_collection.fake_data_generator import main as generate_fake_data
+from elt_pipeline.streaming.api_collector import main as collect_api_data
+from elt_pipeline.streaming.fake_data_generator import main as generate_fake_data
 
 # Configure logging
 logging.basicConfig(

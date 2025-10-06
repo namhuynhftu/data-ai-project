@@ -85,7 +85,7 @@ def load_data_to_snowflake(extracted_data: Dict[str, Any]):
             password=os.getenv("SNOWFLAKE_PASSWORD"),
             warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
             database=os.getenv("SNOWFLAKE_DATABASE"),
-            schema="RAW_DATA",
+            schema=os.getenv("SNOWFLAKE_SCHEMA"),
             role=os.getenv("SNOWFLAKE_ROLE"),
         )
         
@@ -99,10 +99,10 @@ def load_data_to_snowflake(extracted_data: Dict[str, Any]):
             conn=conn,
             df=df,
             table_name=snowflake_target_table.upper(),
-            schema="RAW_DATA",
+            schema=os.getenv("SNOWFLAKE_SCHEMA"),
             database=os.getenv("SNOWFLAKE_DATABASE"),
-            auto_create_table=False,  # Tables already created by our setup script
-            overwrite=True,  # For development - change to False for incremental
+            auto_create_table=False, 
+            overwrite=True,  
             quote_identifiers=False
         )
         

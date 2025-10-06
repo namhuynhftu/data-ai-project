@@ -10,10 +10,9 @@ def verify_snowflake_setup():
         account=os.getenv("SNOWFLAKE_ACCOUNT"),
         user=os.getenv("SNOWFLAKE_USER"),
         password=os.getenv("SNOWFLAKE_PASSWORD"),
-        authenticator=os.getenv("SNOWFLAKE_JWT"),
         warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
         database=os.getenv("SNOWFLAKE_DATABASE"),
-        schema=os.getenv("SNOWFLAKE_SCHEMA"),
+        schema="RAW_DATA",
         role=os.getenv("SNOWFLAKE_ROLE"),
     )
 
@@ -42,17 +41,43 @@ def verify_snowflake_setup():
                 print(f"❌ Schema {schema} not found")
                 return False
 
-        # Check stages
-        cursor.execute("SHOW STAGES IN SCHEMA RAW_DATA")
-        stages = [row[1] for row in cursor.fetchall()]
-        required_stages = ['CSV_STAGE', 'JSON_STAGE']
+        # Switch to RAW_DATA schema
+        cursor.execute("USE SCHEMA RAW_DATA")
 
-        for stage in required_stages:
-            if stage not in stages:
-                print(f"❌ Stage {stage} not found")
-                return False
+        # Check file formats
+        cursor.execute("SHOW FILE FORMATS")
+        file_formats = [row[1] for row in cursor.fetchall()]
+        if 'PARQUET_FORMAT' not in file_formats:
+            print("❌ File format PARQUET_FORMAT not found")
+            return False
+
+        # Check tables
+        cursor.execute("SHOW TABLES")
+        tables = [row[1] for row in cursor.fetchall()]
+        required_tables = [
+            'OLIST_CUSTOMERS_DATASET',
+            'OLIST_GEOLOCATION_DATASET', 
+            'OLIST_ORDER_ITEMS_DATASET',
+            'OLIST_ORDER_PAYMENTS_DATASET',
+            'OLIST_ORDER_REVIEWS_DATASET',
+            'OLIST_ORDERS_DATASET',
+            'OLIST_PRODUCTS_DATASET',
+            'OLIST_SELLERS_DATASET',
+            'PRODUCT_CATEGORY_NAME_TRANSLATION'
+        ]
+
+        missing_tables = []
+        for table in required_tables:
+            if table not in tables:
+                missing_tables.append(table)
+
+        if missing_tables:
+            print(f"❌ Missing tables: {missing_tables}")
+            return False
 
         print("✅ All Snowflake objects verified!")
+        print(f"✅ Found {len(tables)} tables")
+        print(f"✅ Found file format: PARQUET_FORMAT")
         return True
 
     except Exception as e:
