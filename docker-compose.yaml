@@ -1,7 +1,7 @@
 services:
   mysql_data_source:
     build: 
-      context: ./mysql_db
+      context: ./infra/mysql_db
       dockerfile: Dockerfile
     container_name: mysql_data_source
     volumes:

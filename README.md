@@ -10,19 +10,33 @@
 
 ## 🎯 Project Overview
 
-This project implements a production-ready ELT (Extract, Load, Transform) pipeline that processes Brazilian e-commerce data from MySQL through a MinIO data lake to Snowflake data warehouse, with dbt for transformations and analytics.
+This project implements a comprehensive data engineering solution with both **batch** and **streaming** pipelines:
+
+### **🔄 Batch Pipeline** 
+Production ELT pipeline processing Brazilian e-commerce data from MySQL → MinIO → Snowflake → dbt transformations
+
+### **⚡ Streaming Pipeline**
+Real-time data generation and processing with PostgreSQL for continuous data ingestion and analytics
 
 ### Architecture
 
 ```mermaid
-graph LR
-    A[MySQL Source] --> B[MinIO Data Lake]
-    B --> C[Snowflake DW]
-    C --> D[dbt Models]
-    D --> E[Analytics]
+graph TB
+    subgraph "Batch Processing"
+        A[MySQL Source] --> B[MinIO Data Lake]
+        B --> C[Snowflake DW]
+        C --> D[dbt Models]
+        D --> E[Analytics]
+    end
+    
+    subgraph "Streaming Processing"
+        F[Fake Data Generator] --> G[PostgreSQL]
+        G --> H[Real-time Analytics]
+    end
 ```
 
-**Data Flow**: MySQL → MinIO (Parquet) → Snowflake → dbt → Business Intelligence
+**Batch Flow**: MySQL → MinIO (Parquet) → Snowflake → dbt → Business Intelligence  
+**Streaming Flow**: Data Generation → PostgreSQL → Real-time Processing
 
 ## 🏗️ Project Structure
 
@@ -32,7 +46,7 @@ fa-dae2-capstone-namhuynh/
 │   ├── brazilian-ecommerce/           # Olist dataset (9 tables)
 │   └── external/                      # External datasets
 ├── 🔧 elt_pipeline/                   # ELT pipeline core
-│   ├── batch/                         # Batch processing
+│   ├── batch/                         # Batch processing pipeline
 │   │   ├── ops/                       # Pipeline operations
 │   │   │   ├── extract_data_from_mysql.py
 │   │   │   ├── load_data_to_minio.py
@@ -44,7 +58,19 @@ fa-dae2-capstone-namhuynh/
 │   │       ├── mysql_loader.py
 │   │       ├── minio_loader.py
 │   │       └── snowflake_loader.py
-│   └── streaming/                     # Real-time processing
+│   ├── streaming/                     # Real-time processing pipeline
+│   │   ├── ops/                       # Streaming operations
+│   │   │   ├── generate_data.py       # Relational data generation
+│   │   │   └── load_data_to_psql.py   # PostgreSQL loading
+│   │   ├── pipeline/                  # Pipeline orchestration
+│   │   │   └── main.py               # Production streaming runner
+│   │   ├── config/                    # Configuration files
+│   │   │   └── metadata.json         # Relational schema config
+│   │   ├── utils/                     # Utility classes
+│   │   │   ├── fake_data_generator.py # Data generation engine
+│   │   │   └── psql_loader.py        # PostgreSQL utilities
+│   │   └── examples/                  # Example implementations
+│   └── docs/                          # Pipeline documentation
 ├── 🏭 infra/                          # Infrastructure setup
 │   ├── mysql_db/                      # MySQL container setup
 │   ├── minio/                         # MinIO setup
@@ -125,29 +151,41 @@ cp env_example.txt .env
 
 Required environment variables:
 ```env
+# For Batch Pipeline
 # MySQL
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=your_user
-MYSQL_PASSWORD=your_password
-MYSQL_DATABASE=ecommerce_db
+MYSQL_HOST=
+MYSQL_PORT=
+MYSQL_USER=
+MYSQL_PASSWORD=
+MYSQL_DATABASE=
 
 # MinIO
-MINIO_ENDPOINT=localhost:9000
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-MINIO_BUCKET=raw-data
+MINIO_ENDPOINT=
+MINIO_ROOT_USER=
+MINIO_ROOT_PASSWORD=
+MINIO_BUCKET=
 
 # Snowflake
-SNOWFLAKE_ACCOUNT=your_account
-SNOWFLAKE_USER=your_user
-SNOWFLAKE_PASSWORD=your_password
-SNOWFLAKE_WAREHOUSE=WH_T25
-SNOWFLAKE_DATABASE=DB_T25
-SNOWFLAKE_ROLE=RL_T25
+SNOWFLAKE_ACCOUNT=
+SNOWFLAKE_USER=
+SNOWFLAKE_PASSWORD=
+SNOWFLAKE_WAREHOUSE=
+SNOWFLAKE_DATABASE=
+SNOWFLAKE_ROLE=
+
+# For Streaming Pipeline
+# PostgreSQL
+POSTGRES_HOST=
+POSTGRES_PORT=
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DB=
+POSTGRES_SCHEMA=
 ```
 
-### 3. Infrastructure Setup
+### 3. Choose Your Pipeline
+
+#### 🔄 **Batch Pipeline Setup**
 ```bash
 # Start MySQL and MinIO containers
 docker-compose up -d
@@ -157,15 +195,21 @@ uv run python infra/snowflake_dw/create_snowflake_stages.py
 
 # Verify setup
 uv run python infra/snowflake_dw/test_snowflake_setup.py
-```
 
-### 4. Run the Pipeline
-```bash
-# Execute full ELT pipeline
+# Run batch pipeline
 uv run python elt_pipeline/batch/pipelines/main.py
 ```
 
-### 5. dbt Transformations
+#### ⚡ **Streaming Pipeline Setup**
+```bash
+# Start PostgreSQL container
+docker-compose up postgres_dw -d
+
+# Run streaming pipeline
+uv run python elt_pipeline/streaming/pipeline/main.py
+```
+
+### 4. dbt Transformations (Batch Pipeline)
 ```bash
 # Configure dbt
 cd dwh/snowflake
@@ -236,6 +280,12 @@ dbt test
 
 ## 📚 Documentation
 
+### **📖 Pipeline Documentation**
+- **[Complete Pipeline Guide](elt_pipeline/docs/README.md)**: Overview of both batch and streaming pipelines
+- **[Batch Pipeline Guide](elt_pipeline/docs/batch/README.md)**: Step-by-step batch processing documentation
+- **[Streaming Pipeline Guide](elt_pipeline/docs/streaming/README.md)**: Step-by-step streaming processing documentation
+
+### **📊 Technical Documentation**
 - **[Data Source Research](docs/research/data_source_validation.md)**: Dataset analysis and validation
 - **[Pipeline Metadata](elt_pipeline/batch/pipelines/metadata/)**: Table schemas and configurations
 - **[dbt Documentation](dwh/snowflake/)**: Data models and transformations
