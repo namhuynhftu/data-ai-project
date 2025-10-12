@@ -1,0 +1,189 @@
+version: 2
+
+sources:
+  - name: raw_data
+    description: "Brazilian E-commerce data from MySQL source loaded into Snowflake"
+    database: DB_T25
+    schema: RAW_DATA
+    tables:
+      - name: olist_customers_dataset
+        description: "Customer information including demographics and location"
+        columns:
+          - name: customer_id
+            description: "Unique customer identifier"
+            data_tests:
+              - unique
+              - not_null
+          - name: customer_unique_id
+            description: "Unique customer ID across the platform"
+          - name: customer_zip_code_prefix
+            description: "Customer zip code prefix"
+          - name: customer_city
+            description: "Customer city name"
+          - name: customer_state
+            description: "Customer state abbreviation"
+
+      - name: olist_geolocation_dataset
+        description: "Brazilian zip codes and their lat/lng coordinates"
+        columns:
+          - name: geolocation_zip_code_prefix
+            description: "Zip code prefix"
+            data_tests:
+              - not_null
+          - name: geolocation_lat
+            description: "Latitude coordinate"
+          - name: geolocation_lng
+            description: "Longitude coordinate"
+          - name: geolocation_city
+            description: "City name"
+          - name: geolocation_state
+            description: "State abbreviation"
+
+      - name: olist_order_items_dataset
+        description: "Order items data including product details and pricing"
+        columns:
+          - name: order_id
+            description: "Order unique identifier"
+            data_tests:
+              - not_null
+          - name: order_item_id
+            description: "Sequential number identifying order items"
+          - name: product_id
+            description: "Product unique identifier"
+          - name: seller_id
+            description: "Seller unique identifier"
+          - name: shipping_limit_date
+            description: "Shows the seller shipping limit date"
+          - name: price
+            description: "Item price"
+            data_tests:
+              - not_null
+          - name: freight_value
+            description: "Item freight value"
+
+      - name: olist_order_payments_dataset
+        description: "Order payment information"
+        columns:
+          - name: order_id
+            description: "Order unique identifier"
+            data_tests:
+              - not_null
+          - name: payment_sequential
+            description: "Sequential payment number"
+          - name: payment_type
+            description: "Payment method chosen by customer"
+          - name: payment_installments
+            description: "Number of installments chosen by customer"
+          - name: payment_value
+            description: "Transaction value"
+            data_tests:
+              - not_null
+
+      - name: olist_order_reviews_dataset
+        description: "Customer reviews and ratings for orders"
+        columns:
+          - name: review_id
+            description: "Review unique identifier"
+            data_tests:
+              - unique
+              - not_null
+          - name: order_id
+            description: "Order unique identifier"
+            data_tests:
+              - not_null
+          - name: review_score
+            description: "Review score ranging from 1 to 5"
+            data_tests:
+              - accepted_values:
+                  values: [1, 2, 3, 4, 5]
+          - name: review_comment_title
+            description: "Review comment title written by customer"
+          - name: review_comment_message
+            description: "Review comment message written by customer"
+          - name: review_creation_date
+            description: "Review creation date"
+          - name: review_answer_timestamp
+            description: "Review answer timestamp"
+
+      - name: olist_orders_dataset
+        description: "Core dataset with order information"
+        columns:
+          - name: order_id
+            description: "Order unique identifier"
+            data_tests:
+              - unique
+              - not_null
+          - name: customer_id
+            description: "Customer unique identifier"
+            data_tests:
+              - not_null
+          - name: order_status
+            description: "Order status (delivered, shipped, etc.)"
+            data_tests:
+              - accepted_values:
+                  values: ['delivered', 'shipped', 'canceled', 'processing', 'invoiced', 'created', 'approved', 'unavailable']
+          - name: order_purchase_timestamp
+            description: "Purchase timestamp"
+            data_tests:
+              - not_null
+          - name: order_approved_at
+            description: "Payment approval timestamp"
+          - name: order_delivered_carrier_date
+            description: "Order posting timestamp"
+          - name: order_delivered_customer_date
+            description: "Delivery date to customer"
+          - name: order_estimated_delivery_date
+            description: "Estimated delivery date"
+
+      - name: olist_products_dataset
+        description: "Product information including categories and dimensions"
+        columns:
+          - name: product_id
+            description: "Product unique identifier"
+            data_tests:
+              - unique
+              - not_null
+          - name: product_category_name
+            description: "Root category of product (in Portuguese)"
+          - name: product_name_lenght
+            description: "Number of characters extracted from product name"
+          - name: product_description_lenght
+            description: "Number of characters extracted from product description"
+          - name: product_photos_qty
+            description: "Number of product published photos"
+          - name: product_weight_g
+            description: "Product weight measured in grams"
+          - name: product_length_cm
+            description: "Product length measured in centimeters"
+          - name: product_height_cm
+            description: "Product height measured in centimeters"
+          - name: product_width_cm
+            description: "Product width measured in centimeters"
+
+      - name: olist_sellers_dataset
+        description: "Seller information including location"
+        columns:
+          - name: seller_id
+            description: "Seller unique identifier"
+            data_tests:
+              - unique
+              - not_null
+          - name: seller_zip_code_prefix
+            description: "Seller zip code prefix"
+          - name: seller_city
+            description: "Seller city name"
+          - name: seller_state
+            description: "Seller state abbreviation"
+
+      - name: product_category_name_translation
+        description: "Translation of product category names from Portuguese to English"
+        columns:
+          - name: product_category_name
+            description: "Category name in Portuguese"
+            data_tests:
+              - unique
+              - not_null
+          - name: product_category_name_english
+            description: "Category name in English"
+            data_tests:
+              - not_null

@@ -22,15 +22,61 @@ clean-targets:         # directories to be removed by `dbt clean`
   - "target"
   - "dbt_packages"
 
+# Global configurations
+vars:
+  # Project-specific variables
+  start_date: '2016-01-01'
+  end_date: '2020-12-31'
+  
+# Test configurations
+data_tests:
+  +store_failures: true  # Store test failures for debugging
+  +schema: test_failures
+
+# Snapshot configurations
+snapshots:
+  snowflake:
+    +target_schema: snapshots
+    +strategy: timestamp
+    +updated_at: updated_at
+
+# Seed configurations
+seeds:
+  snowflake:
+    +schema: seed_data
+    +quote_columns: false
+
 
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
 
-# In this example config, we tell dbt to build all models in the example/
-# directory as views. These settings can be overridden in the individual model
-# files using the `{{ config(...) }}` macro.
+# Model configurations for Brazilian E-commerce data pipeline
 models:
   snowflake:
-    # Config indicated by + and applies to all files under models/example/
-    example:
+    # Staging models: Views in STAGING schema
+    staging:
       +materialized: view
+      +schema: STAGING
+      +docs:
+        node_color: "#228B22"  # Green for staging
+      +meta:
+        layer: "staging"
+        
+    # Intermediate models: Ephemeral by default (can be overridden in individual files)
+    intermediate:
+      +schema: INTERMEDIATE
+      +materialized: ephemeral
+      +docs:
+        node_color: "#FF8C00"  # Orange for intermediate
+      +meta:
+        layer: "intermediate"
+        
+    # Mart models: Tables in ANALYTICS schema
+    mart:
+      +materialized: table
+      +schema: ANALYTICS
+      +docs:
+        node_color: "#4169E1"  # Blue for mart
+      +meta:
+        layer: "mart"
+

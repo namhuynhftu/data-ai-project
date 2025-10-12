@@ -88,7 +88,7 @@ def run_production_pipeline():
     logger.info("=" * 60)
     
     try:
-        from elt_pipeline.streaming.examples.load_relational_data import load_all_relational_tables
+        from elt_pipeline.streaming.ops.load_relational_data import load_all_relational_tables
         
         # Pipeline configuration (Demo with 100 records)
         total_records = 100
