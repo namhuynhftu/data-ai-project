@@ -1,10 +1,10 @@
-import logging
 import pandas as pd
 from sqlalchemy import create_engine, text
 import pymysql
 from typing import Dict, Any, Optional
 
 from elt_pipeline.batch.utils.data_loader import DataLoader
+from elt_pipeline.logger_utils import get_mysql_logger
 
 
 class MySQLLoader(DataLoader):
@@ -12,7 +12,7 @@ class MySQLLoader(DataLoader):
 
     def __init__(self, params: Dict[str, Any]):
         super().__init__(params)
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = get_mysql_logger()
         self._engine = None
 
     def get_db_connection(self, params: Dict[str, Any] = None) -> Any:
@@ -32,7 +32,11 @@ class MySQLLoader(DataLoader):
                     f"@{self.params['host']}:{self.params['port']}/{self.params['database']}"
                 )
                 
-                self.logger.info(f"Connecting to MySQL with mysql+pymysql://***:***@{self.params['host']}:{self.params['port']}/{self.params['database']}")
+                self.logger.info("Establishing MySQL connection",
+                               host=self.params['host'],
+                               port=self.params['port'],
+                               database=self.params['database'],
+                               user=self.params['user'])
                 self._engine = create_engine(connection_string, connect_args=ssl_args)
                 
                 # Test connection
@@ -41,7 +45,12 @@ class MySQLLoader(DataLoader):
                     
             return self._engine
         except Exception as e:
-            self.logger.error(f"MySQL connection failed: {e}")
+            self.logger.error("MySQL connection failed",
+                            host=self.params['host'],
+                            port=self.params['port'],
+                            database=self.params['database'],
+                            error=str(e),
+                            error_type=type(e).__name__)
             raise
     
     def extract_data(self, sql: str) -> pd.DataFrame:
@@ -71,10 +80,15 @@ class MySQLLoader(DataLoader):
             df = pd.read_sql(sql, con=connection)
             connection.close()
             
-            self.logger.info(f"Successfully extracted {len(df)} rows from database")
+            self.logger.info("Data extraction completed successfully",
+                           rows_extracted=len(df),
+                           query_length=len(sql))
             return df
         except Exception as e:
-            self.logger.error(f"Data extraction failed: {e}")
+            self.logger.error("Data extraction failed",
+                            error=str(e),
+                            error_type=type(e).__name__,
+                            query_length=len(sql) if sql else 0)
             raise
     
     def load_data(self, pd_data: pd.DataFrame, params: Dict[str, Any]) -> int:
@@ -90,7 +104,11 @@ class MySQLLoader(DataLoader):
                 result = conn.execute(query).fetchone()
                 return result['max_watermark'] if result and result['max_watermark'] is not None else None
         except Exception as e:
-            self.logger.error(f"Failed to get watermark: {e}")
+            self.logger.error("Failed to get watermark",
+                            table_name=table_name,
+                            watermark_column=watermark,
+                            error=str(e),
+                            error_type=type(e).__name__)
             raise
 
     def __enter__(self):

@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -11,6 +10,7 @@ from minio import Minio
 from minio.error import S3Error
 
 from elt_pipeline.batch.utils.data_loader import DataLoader
+from elt_pipeline.logger_utils import get_minio_logger
 
 
 class MinIOLoader(DataLoader):
@@ -19,7 +19,7 @@ class MinIOLoader(DataLoader):
     def __init__(self, params: Dict[str, Any]):
         super().__init__(params)
         self.client = None
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = get_minio_logger()
     
     def get_db_connection(self) -> Minio:
         """Establish MinIO connection."""
@@ -33,10 +33,15 @@ class MinIOLoader(DataLoader):
                 )
                 # Test connection
                 self.client.list_buckets()
-                self.logger.info("MinIO connection established successfully")
+                self.logger.info("MinIO connection established successfully",
+                               endpoint=self.params['endpoint'],
+                               secure=self.params.get('secure', False))
             return self.client
         except S3Error as e:
-            self.logger.error(f"MinIO connection failed: {e}")
+            self.logger.error("MinIO connection failed",
+                            endpoint=self.params['endpoint'],
+                            error=str(e),
+                            error_type=type(e).__name__)
             raise
     
     def extract_data(self, sql: str) -> pd.DataFrame:
@@ -48,11 +53,14 @@ class MinIOLoader(DataLoader):
         try:
             if not minio_client.bucket_exists(bucket_name):
                 minio_client.make_bucket(bucket_name)
-                self.logger.info(f"Bucket created: {bucket_name}")
+                self.logger.info("MinIO bucket created", bucket_name=bucket_name)
             else:
-                self.logger.info(f"Bucket already exists: {bucket_name}")
+                self.logger.info("MinIO bucket already exists", bucket_name=bucket_name)
         except S3Error as e:
-            self.logger.error(f"Error creating bucket {bucket_name}: {e}")
+            self.logger.error("Error creating MinIO bucket",
+                            bucket_name=bucket_name,
+                            error=str(e),
+                            error_type=type(e).__name__)
             raise
         return Path(bucket_name)
             
@@ -65,7 +73,9 @@ class MinIOLoader(DataLoader):
         compression = params.get('compression', 'snappy')
 
         if pd_data is None or pd_data.empty:
-            self.logger.warning("No data to load to MinIO")
+            self.logger.warning("No data to load to MinIO",
+                              bucket=bucket_name,
+                              file_name=file_name)
             return 0
         
         # Convert DataFrame to Parquet in memory    
@@ -81,8 +91,15 @@ class MinIOLoader(DataLoader):
             data_buffer, 
             data_buffer.getbuffer().nbytes, 
             content_type=f"application/{file_format}")
-        self.logger.info(f"Data loaded to MinIO bucket '{bucket_name}' as file '{file_name}'")
-        return 1
+        
+        self.logger.info("Data loaded to MinIO successfully",
+                        bucket=bucket_name,
+                        file_name=file_name,
+                        file_format=file_format,
+                        compression=compression,
+                        rows_loaded=len(pd_data),
+                        file_size_bytes=data_buffer.getbuffer().nbytes)
+        return len(pd_data)
 
     def get_watermark(self, table_name: str, watermark: str) -> Optional[str]:
         pass

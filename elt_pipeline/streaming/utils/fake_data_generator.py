@@ -1,12 +1,15 @@
 import json
 import csv
-import logging
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict
 
 from faker import Faker
+from elt_pipeline.logger_utils import get_data_ingestion_logger, StreamingOperation
+
+# Setup centralized logging
+logger = get_data_ingestion_logger()
 
 class FakeDataGenerator:
     def __init__(self, create_directories=False):
@@ -405,29 +408,56 @@ def main():
     generator = FakeDataGenerator()
 
     try:
+        logger.info("Starting fake data generation", records_requested={"users": 100, "transactions": 100, "detailed_transactions": 200})
+        
         # Generate user data
-        user_data = generator.generate_user_data(100)
+        with StreamingOperation(logger, "data_generation", event_type="user_data") as op:
+            user_data = generator.generate_user_data(100)
+            op.records_processed = len(user_data)
+            
         user_json_path = generator.save_data_as_json(user_data, "fake_user_data.json")
         user_csv_path = generator.save_data_as_csv(user_data, "fake_user_data.csv")
-        logging.info(f"User data successfully saved to {user_json_path} and {user_csv_path}")
+        logger.info("User data successfully generated and saved", 
+                   json_path=str(user_json_path), 
+                   csv_path=str(user_csv_path),
+                   records_count=len(user_data))
 
         # Generate basic transaction data
-        transaction_data = generator.generate_transaction_data(100)
+        with StreamingOperation(logger, "data_generation", event_type="transaction_data") as op:
+            transaction_data = generator.generate_transaction_data(100)
+            op.records_processed = len(transaction_data)
+            
         transaction_json_path = generator.save_data_as_json(transaction_data, "fake_transaction_data.json")
         transaction_csv_path = generator.save_data_as_csv(transaction_data, "fake_transaction_data.csv")
-        logging.info(f"Basic transaction data successfully saved to {transaction_json_path} and {transaction_csv_path}")
+        logger.info("Basic transaction data successfully generated and saved",
+                   json_path=str(transaction_json_path),
+                   csv_path=str(transaction_csv_path), 
+                   records_count=len(transaction_data))
         
         # Generate detailed transaction data
         user_ids = [user["id"] for user in user_data[:20]]  # Use some actual user IDs
-        detailed_transactions = generator.generate_detailed_transaction_data(200, user_ids)
+        with StreamingOperation(logger, "data_generation", event_type="detailed_transaction_data") as op:
+            detailed_transactions = generator.generate_detailed_transaction_data(200, user_ids)
+            op.records_processed = len(detailed_transactions)
+            
         detailed_json_path = generator.save_data_as_json(detailed_transactions, "detailed_transaction_data.json")
         detailed_csv_path = generator.save_data_as_csv(detailed_transactions, "detailed_transaction_data.csv")
-        logging.info(f"Detailed transaction data successfully saved to {detailed_json_path} and {detailed_csv_path}")
+        logger.info("Detailed transaction data successfully generated and saved",
+                   json_path=str(detailed_json_path),
+                   csv_path=str(detailed_csv_path),
+                   records_count=len(detailed_transactions))
         
         # Generate and save schemas
         schema_path = generator.save_schemas()
-        logging.info(f"Schema definitions saved to {schema_path}")
+        logger.info("Schema definitions saved", schema_path=str(schema_path))
+        
+        # Log overall summary
+        logger.info("🎉 Fake data generation completed successfully",
+                   total_users=len(user_data),
+                   total_basic_transactions=len(transaction_data),
+                   total_detailed_transactions=len(detailed_transactions),
+                   files_generated=6)  # 3 JSON + 3 CSV files
     
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logger.error("Fake data generation failed", error=str(e), error_type=type(e).__name__)
         raise

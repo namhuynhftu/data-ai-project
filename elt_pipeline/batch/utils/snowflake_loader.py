@@ -2,7 +2,6 @@
 # Import data from Minio to stage to snowflake
 
 import os
-import logging
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, Any
@@ -12,6 +11,7 @@ from minio import Minio
 from minio.error import S3Error
 from snowflake.connector import SnowflakeConnection
 from elt_pipeline.batch.utils.data_loader import DataLoader
+from elt_pipeline.logger_utils import get_snowflake_logger
 
 class SnowflakeLoader(DataLoader):
     """Get Snowflake connection"""
@@ -19,7 +19,7 @@ class SnowflakeLoader(DataLoader):
     def __init__(self, params):
         super().__init__(params)
         self.client = None
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = get_snowflake_logger()
     
     def get_db_connection(self):
         """Establish Snowflake connection."""
