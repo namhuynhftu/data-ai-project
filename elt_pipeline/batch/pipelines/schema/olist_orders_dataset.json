@@ -1,0 +1,76 @@
+{
+  "table_name": "olist_orders_dataset",
+  "description": "Main orders table with status and delivery information",
+  "columns": [
+    {
+      "name": "order_id",
+      "type": "VARCHAR(50)",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Unique identifier for the order"
+    },
+    {
+      "name": "customer_id",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Unique identifier for the customer"
+    },
+    {
+      "name": "order_status",
+      "type": "VARCHAR(20)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Status of the order (delivered, shipped, etc.)"
+    },
+    {
+      "name": "order_purchase_timestamp",
+      "type": "DATETIME",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Timestamp when the order was purchased"
+    },
+    {
+      "name": "order_approved_at",
+      "type": "DATETIME",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Timestamp when the order was approved"
+    },
+    {
+      "name": "order_delivered_carrier_date",
+      "type": "DATETIME",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Date when order was delivered to carrier"
+    },
+    {
+      "name": "order_delivered_customer_date",
+      "type": "DATETIME",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Date when order was delivered to customer"
+    },
+    {
+      "name": "order_estimated_delivery_date",
+      "type": "DATETIME",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Estimated delivery date for the order"
+    }
+  ],
+  "constraints": {
+    "primary_key": ["order_id"],
+    "foreign_keys": [
+      {
+        "column": "customer_id",
+        "references_table": "olist_customers_dataset",
+        "references_column": "customer_id"
+      }
+    ],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 99000,
+  "data_classification": "transactional"
+}

@@ -1,0 +1,346 @@
+{
+  "metadata_version": "1.0.0",
+  "created_date": "2025-10-01",
+  "description": "ETL metadata configuration for Brazilian e-commerce dataset from MySQL to MinIO data lake and Snowflake data warehouse",
+  "source_system": "mysql",
+  "target_systems": ["minio_data_lake", "snowflake_data_warehouse"],
+  
+  "tables": [
+    {
+      "source_table": "olist_customers_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_customers_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_customers_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "olist_customers_dataset"
+        }
+      },
+      "strategy": "full_load",
+      "description": "Customer master data - contains customer identifiers and location",
+      "primary_key": ["customer_id"],
+      "load_frequency": "daily",
+      "partition_column": null,
+      "watermark_column": null,
+      "data_classification": "PII",
+      "estimated_row_count": 99000,
+      "schema_file": "olist_customers_dataset.json",
+      "pipeline_order": 1
+    },
+    {
+      "source_table": "olist_geolocation_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_geolocation_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_geolocation_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "olist_geolocation_dataset"
+        }
+      },
+      "strategy": "full_load",
+      "description": "Geographic location data for zip codes with coordinates",
+      "primary_key": [],
+      "load_frequency": "weekly",
+      "partition_column": null,
+      "watermark_column": null,
+      "data_classification": "public",
+      "estimated_row_count": 1000000,
+      "schema_file": "olist_geolocation_dataset.json",
+      "pipeline_order": 2
+    },
+    {
+      "source_table": "olist_order_items_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_order_items_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_order_items_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "olist_order_items_dataset"
+        }
+      },
+      "strategy": "incremental_by_watermark",
+      "description": "Individual items within each order with pricing and shipping info",
+      "primary_key": ["order_id", "order_item_id"],
+      "load_frequency": "hourly",
+      "partition_column": "shipping_limit_date",
+      "watermark_column": "shipping_limit_date",
+      "data_classification": "transactional",
+      "estimated_row_count": 112000,
+      "schema_file": "olist_order_items_dataset.json",
+      "pipeline_order": 5
+    },
+    {
+      "source_table": "olist_order_payments_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_order_payments_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_order_payments_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "olist_order_payments_dataset"
+        }
+      },
+      "strategy": "full_load",
+      "description": "Payment information for orders including payment type and installments",
+      "primary_key": ["order_id", "payment_sequential"],
+      "load_frequency": "daily",
+      "partition_column": null,
+      "watermark_column": null,
+      "data_classification": "financial",
+      "estimated_row_count": 103000,
+      "schema_file": "olist_order_payments_dataset.json",
+      "pipeline_order": 6
+    },
+    {
+      "source_table": "olist_order_reviews_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_order_reviews_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_order_reviews_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "OLIST_ORDER_REVIEWS_DATASET"
+        }
+      },
+      "strategy": "incremental_by_watermark",
+      "description": "Customer reviews and ratings for orders",
+      "primary_key": ["review_id"],
+      "load_frequency": "daily",
+      "partition_column": "review_creation_date",
+      "watermark_column": "review_creation_date",
+      "data_classification": "customer_feedback",
+      "estimated_row_count": 99000,
+      "schema_file": "olist_order_reviews_dataset.json",
+      "pipeline_order": 7
+    },
+    {
+      "source_table": "olist_orders_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_orders_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_orders_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "olist_orders_dataset"
+        }
+      },
+      "strategy": "incremental_by_watermark",
+      "description": "Main orders table with status and delivery information",
+      "primary_key": ["order_id"],
+      "load_frequency": "hourly",
+      "partition_column": "order_purchase_timestamp",
+      "watermark_column": "order_purchase_timestamp",
+      "data_classification": "transactional",
+      "estimated_row_count": 99000,
+      "schema_file": "olist_orders_dataset.json",
+      "pipeline_order": 4
+    },
+    {
+      "source_table": "olist_products_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_products_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_products_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "olist_products_dataset"
+        }
+      },
+      "strategy": "full_load",
+      "description": "Product catalog with dimensions and category information",
+      "primary_key": ["product_id"],
+      "load_frequency": "daily",
+      "partition_column": null,
+      "watermark_column": null,
+      "data_classification": "master_data",
+      "estimated_row_count": 32000,
+      "schema_file": "olist_products_dataset.json",
+      "pipeline_order": 3
+    },
+    {
+      "source_table": "olist_sellers_dataset",
+      "targets": {
+        "minio": {
+          "target_table": "olist_sellers_dataset",
+          "target_path": "raw-data/ecommerce_db/olist_sellers_dataset",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "olist_sellers_dataset"
+        }
+      },
+      "strategy": "full_load",
+      "description": "Seller information including location data",
+      "primary_key": ["seller_id"],
+      "load_frequency": "daily",
+      "partition_column": null,
+      "watermark_column": null,
+      "data_classification": "master_data",
+      "estimated_row_count": 3000,
+      "schema_file": "olist_sellers_dataset.json",
+      "pipeline_order": 3
+    },
+    {
+      "source_table": "product_category_name_translation",
+      "targets": {
+        "minio": {
+          "target_table": "product_category_name_translation",
+          "target_path": "raw-data/ecommerce_db/product_category_name_translation",
+          "format": "parquet",
+          "compression": "snappy"
+        },
+        "snowflake": {
+          "target_table": "PRODUCT_CATEGORY_NAME_TRANSLATION"
+        }
+      },
+      "strategy": "full_load",
+      "description": "Translation mapping for product category names from Portuguese to English",
+      "primary_key": ["product_category_name"],
+      "load_frequency": "weekly",
+      "partition_column": null,
+      "watermark_column": null,
+      "data_classification": "reference_data",
+      "estimated_row_count": 71,
+      "schema_file": "product_category_name_translation.json",
+      "pipeline_order": 2
+    }
+  ],
+  
+  "load_strategies": {
+    "full_load": {
+      "description": "Complete table refresh - all data is extracted and loaded",
+      "use_case": "Small tables, master data, reference data",
+      "performance_impact": "High for large tables"
+    },
+    "incremental_by_watermark": {
+      "description": "Load only new/changed records based on timestamp column",
+      "use_case": "Large tables with reliable timestamp columns",
+      "performance_impact": "Low - only delta data"
+    },
+    "incremental_by_partition": {
+      "description": "Load data for specific partition (date-based)",
+      "use_case": "Tables partitioned by date",
+      "performance_impact": "Medium - depends on partition size"
+    }
+  },
+  
+  "data_quality_checks": {
+    "primary_key_uniqueness": {
+      "enabled": true,
+      "threshold": 1.0,
+      "description": "Ensure primary key columns are unique"
+    },
+    "null_check_primary_keys": {
+      "enabled": true,
+      "threshold": 1.0,
+      "description": "Primary key columns should not have null values"
+    },
+    "row_count_validation": {
+      "enabled": true,
+      "threshold": 0.95,
+      "description": "Row count should not decrease by more than 5% compared to previous load"
+    }
+  },
+  
+  "data_source_config": {
+    "source_database": {
+      "type": "mysql",
+      "host": "${MYSQL_HOST}",
+      "port": "${MYSQL_PORT}",
+      "database": "${MYSQL_DATABASE}",
+      "schema": "ecommerce_db",
+      "user": "${MYSQL_USER}",
+      "password": "${MYSQL_PASSWORD}"
+    },
+    "target_storages": {
+      "minio": {
+        "type": "minio",
+        "endpoint": "${MINIO_ENDPOINT}",
+        "access_key": "${MINIO_ROOT_USER}",
+        "secret_key": "${MINIO_ROOT_PASSWORD}",
+        "bucket": "${MINIO_BUCKET}",
+        "default_format": "parquet",
+        "default_compression": "snappy",
+        "layer": "raw-data"
+      },
+      "snowflake": {
+        "type": "snowflake",
+        "account": "${SNOWFLAKE_ACCOUNT}",
+        "user": "${SNOWFLAKE_USER}",
+        "password": "${SNOWFLAKE_PASSWORD}",
+        "warehouse": "${SNOWFLAKE_WAREHOUSE}",
+        "database": "${SNOWFLAKE_DATABASE}",
+        "role": "${SNOWFLAKE_ROLE}",
+        "default_schema": "RAW_DATA",
+        "stages": {
+          "PARQUET_STAGE": {
+            "description": "Stage for parquet files from MinIO",
+            "file_format": "PARQUET_FORMAT",
+            "stage_type": "external",
+            "location": "@PARQUET_STAGE"
+          },
+          "CSV_STAGE": {
+            "description": "Stage for CSV files (legacy)",
+            "file_format": "CSV_FORMAT", 
+            "stage_type": "internal"
+          }
+        },
+        "file_formats": {
+          "PARQUET_FORMAT": {
+            "type": "PARQUET",
+            "compression": "SNAPPY",
+            "binary_as_text": false
+          },
+          "CSV_FORMAT": {
+            "type": "CSV",
+            "field_delimiter": ",",
+            "skip_header": 1,
+            "null_if": ["NULL", "null", ""]
+          }
+        }
+      }
+    },
+    "data_lake_config": {
+      "raw-data": {
+        "description": "Raw data ingestion to MinIO data lake",
+        "target": "minio",
+        "processing": "minimal",
+        "format": "parquet"
+      },
+      "data_warehouse_config": {
+        "description": "Raw data ingestion to Snowflake for immediate analytics",
+        "target": "snowflake", 
+        "processing": "basic_cleansing",
+        "format": "structured_tables"
+      },
+      "medallion_architecture": {
+        "bronze": "minio",
+        "silver": "snowflake",
+        "gold": "snowflake"
+      }
+    },
+    "retry_policy": {
+      "max_retries": 3,
+      "retry_delay_seconds": 60,
+      "exponential_backoff": true
+    }
+  }
+}

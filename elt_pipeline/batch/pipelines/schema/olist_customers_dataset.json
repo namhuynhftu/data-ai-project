@@ -1,0 +1,49 @@
+{
+  "table_name": "olist_customers_dataset",
+  "description": "Customer master data - contains customer identifiers and location",
+  "columns": [
+    {
+      "name": "customer_id",
+      "type": "VARCHAR(50)",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Unique identifier for the customer"
+    },
+    {
+      "name": "customer_unique_id",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Unique identifier for customer across the platform"
+    },
+    {
+      "name": "customer_zip_code_prefix",
+      "type": "VARCHAR(10)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "First 5 digits of customer zip code"
+    },
+    {
+      "name": "customer_city",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Customer city name"
+    },
+    {
+      "name": "customer_state",
+      "type": "VARCHAR(2)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Customer state abbreviation"
+    }
+  ],
+  "constraints": {
+    "primary_key": ["customer_id"],
+    "foreign_keys": [],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 99000,
+  "data_classification": "PII"
+}

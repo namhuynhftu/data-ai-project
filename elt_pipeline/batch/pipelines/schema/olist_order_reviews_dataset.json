@@ -1,0 +1,69 @@
+{
+  "table_name": "olist_order_reviews_dataset",
+  "description": "Customer reviews and ratings for orders",
+  "columns": [
+    {
+      "name": "review_id",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Unique identifier for the review"
+    },
+    {
+      "name": "order_id",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Unique identifier for the order"
+    },
+    {
+      "name": "review_score",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Rating score from 1 to 5"
+    },
+    {
+      "name": "review_comment_title",
+      "type": "VARCHAR(100)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Title of the review comment"
+    },
+    {
+      "name": "review_comment_message",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Review comment message"
+    },
+    {
+      "name": "review_creation_date",
+      "type": "VARCHAR(100)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Date when the review was created"
+    },
+    {
+      "name": "review_answer_timestamp",
+      "type": "VARCHAR(100)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Timestamp when the review was answered"
+    }
+  ],
+  "constraints": {
+    "primary_key": [],
+    "foreign_keys": [
+      {
+        "column": "order_id",
+        "references_table": "olist_orders_dataset",
+        "references_column": "order_id"
+      }
+    ],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 99000,
+  "data_classification": "customer_feedback"
+}

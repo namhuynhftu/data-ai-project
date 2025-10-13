@@ -1,0 +1,28 @@
+{
+  "table_name": "product_category_name_translation",
+  "description": "Translation mapping for product category names from Portuguese to English",
+  "columns": [
+    {
+      "name": "product_category_name",
+      "type": "VARCHAR(100)",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Product category name in Portuguese"
+    },
+    {
+      "name": "product_category_name_english",
+      "type": "VARCHAR(100)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Product category name translated to English"
+    }
+  ],
+  "constraints": {
+    "primary_key": ["product_category_name"],
+    "foreign_keys": [],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 71,
+  "data_classification": "reference_data"
+}

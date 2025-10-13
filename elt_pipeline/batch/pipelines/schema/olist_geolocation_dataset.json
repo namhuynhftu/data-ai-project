@@ -1,0 +1,49 @@
+{
+  "table_name": "olist_geolocation_dataset",
+  "description": "Geographic location data for zip codes with coordinates",
+  "columns": [
+    {
+      "name": "geolocation_zip_code_prefix",
+      "type": "VARCHAR(10)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "First 5 digits of zip code"
+    },
+    {
+      "name": "geolocation_lat",
+      "type": "DECIMAL(10,8)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Latitude coordinate"
+    },
+    {
+      "name": "geolocation_lng",
+      "type": "DECIMAL(11,8)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Longitude coordinate"
+    },
+    {
+      "name": "geolocation_city",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "City name for the location"
+    },
+    {
+      "name": "geolocation_state",
+      "type": "VARCHAR(2)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "State abbreviation for the location"
+    }
+  ],
+  "constraints": {
+    "primary_key": [],
+    "foreign_keys": [],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 1000000,
+  "data_classification": "public"
+}

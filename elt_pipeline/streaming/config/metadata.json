@@ -1,0 +1,312 @@
+{
+    "users": {
+        "table_name": "users",
+        "description": "User account information and demographics",
+        "columns": {
+            "user_id": {
+                "type": "STRING",
+                "description": "Unique user identifier (UUID)",
+                "nullable": false,
+                "primary_key": true
+            },
+            "name": {
+                "type": "STRING",
+                "description": "User's full name",
+                "nullable": false,
+                "max_length": 255
+            },
+            "email": {
+                "type": "STRING",
+                "description": "User's email address",
+                "nullable": false,
+                "max_length": 255,
+                "unique": true
+            },
+            "address": {
+                "type": "STRING",
+                "description": "User's physical address",
+                "nullable": true,
+                "max_length": 500
+            },
+            "created_at": {
+                "type": "TIMESTAMP",
+                "description": "Account creation timestamp",
+                "nullable": false
+            }
+        },
+        "indexes": [
+            "email"
+        ],
+        "partitions": [
+            "created_at"
+        ]
+    },
+    "transactions": {
+        "table_name": "transactions",
+        "description": "Basic transaction records",
+        "columns": {
+            "transaction_id": {
+                "type": "STRING",
+                "description": "Unique transaction identifier (UUID)",
+                "nullable": false,
+                "primary_key": true
+            },
+            "user_id": {
+                "type": "STRING",
+                "description": "Associated user identifier",
+                "nullable": false,
+                "foreign_key": "users.user_id"
+            },
+            "amount": {
+                "type": "DECIMAL(10,2)",
+                "description": "Transaction amount",
+                "nullable": false
+            },
+            "currency": {
+                "type": "STRING",
+                "description": "Currency code (ISO 4217)",
+                "nullable": false,
+                "max_length": 3
+            },
+            "timestamp": {
+                "type": "TIMESTAMP",
+                "description": "Transaction timestamp",
+                "nullable": false
+            }
+        },
+        "indexes": [
+            "user_id",
+            "timestamp"
+        ],
+        "partitions": [
+            "timestamp"
+        ]
+    },
+    "detailed_transactions": {
+        "table_name": "detailed_transactions",
+        "description": "Comprehensive transaction records with metadata",
+        "columns": {
+            "id": {
+                "type": "INTEGER",
+                "description": "Incremental primary key",
+                "nullable": false,
+                "primary_key": true,
+                "auto_increment": true
+            },
+            "transaction_id": {
+                "type": "STRING",
+                "description": "Reference to transaction ID",
+                "nullable": false,
+                "foreign_key": "transactions.transaction_id"
+            },
+            "user_id": {
+                "type": "STRING",
+                "description": "Associated user identifier",
+                "nullable": false,
+                "foreign_key": "users.user_id"
+            },
+            "amount": {
+                "type": "DECIMAL(10,2)",
+                "description": "Transaction amount (negative for debits)",
+                "nullable": false
+            },
+            "currency": {
+                "type": "STRING",
+                "description": "Currency code (ISO 4217)",
+                "nullable": false,
+                "max_length": 3
+            },
+            "transaction_type": {
+                "type": "STRING",
+                "description": "Type of transaction",
+                "nullable": false,
+                "enum": [
+                    "purchase",
+                    "refund",
+                    "transfer",
+                    "withdrawal",
+                    "deposit",
+                    "payment"
+                ]
+            },
+            "payment_method": {
+                "type": "STRING",
+                "description": "Payment method used",
+                "nullable": false,
+                "enum": [
+                    "credit_card",
+                    "debit_card",
+                    "bank_transfer",
+                    "paypal",
+                    "apple_pay",
+                    "google_pay",
+                    "cash"
+                ]
+            },
+            "merchant_name": {
+                "type": "STRING",
+                "description": "Merchant or company name",
+                "nullable": true,
+                "max_length": 255
+            },
+            "merchant_category": {
+                "type": "STRING",
+                "description": "Merchant category",
+                "nullable": true,
+                "enum": [
+                    "grocery",
+                    "restaurant",
+                    "gas_station",
+                    "retail",
+                    "online",
+                    "entertainment",
+                    "travel",
+                    "healthcare",
+                    "education",
+                    "utilities"
+                ]
+            },
+            "description": {
+                "type": "STRING",
+                "description": "Transaction description",
+                "nullable": true,
+                "max_length": 500
+            },
+            "status": {
+                "type": "STRING",
+                "description": "Transaction status",
+                "nullable": false,
+                "enum": [
+                    "completed",
+                    "pending",
+                    "failed",
+                    "cancelled",
+                    "processing"
+                ]
+            },
+            "timestamp": {
+                "type": "TIMESTAMP",
+                "description": "Transaction timestamp",
+                "nullable": false
+            },
+            "location": {
+                "type": "OBJECT",
+                "description": "Transaction location details",
+                "nullable": true,
+                "properties": {
+                    "city": {
+                        "type": "STRING",
+                        "max_length": 100
+                    },
+                    "state": {
+                        "type": "STRING",
+                        "max_length": 100
+                    },
+                    "country": {
+                        "type": "STRING",
+                        "max_length": 100
+                    },
+                    "latitude": {
+                        "type": "FLOAT"
+                    },
+                    "longitude": {
+                        "type": "FLOAT"
+                    }
+                }
+            },
+            "metadata": {
+                "type": "OBJECT",
+                "description": "Transaction metadata",
+                "nullable": true,
+                "properties": {
+                    "ip_address": {
+                        "type": "STRING",
+                        "max_length": 45
+                    },
+                    "user_agent": {
+                        "type": "STRING",
+                        "max_length": 500
+                    },
+                    "device_type": {
+                        "type": "STRING",
+                        "enum": [
+                            "mobile",
+                            "desktop",
+                            "tablet"
+                        ]
+                    },
+                    "channel": {
+                        "type": "STRING",
+                        "enum": [
+                            "online",
+                            "mobile_app",
+                            "in_store",
+                            "atm",
+                            "phone"
+                        ]
+                    },
+                    "reference_number": {
+                        "type": "STRING",
+                        "max_length": 20
+                    },
+                    "fee_amount": {
+                        "type": "DECIMAL(5,2)"
+                    }
+                }
+            },
+            "card_details": {
+                "type": "OBJECT",
+                "description": "Card payment details (if applicable)",
+                "nullable": true,
+                "properties": {
+                    "last_four_digits": {
+                        "type": "STRING",
+                        "max_length": 4
+                    },
+                    "card_type": {
+                        "type": "STRING",
+                        "enum": [
+                            "Visa",
+                            "MasterCard",
+                            "American Express",
+                            "Discover"
+                        ]
+                    },
+                    "issuing_bank": {
+                        "type": "STRING",
+                        "max_length": 255
+                    }
+                }
+            },
+            "store_details": {
+                "type": "OBJECT",
+                "description": "Store details for in-store transactions",
+                "nullable": true,
+                "properties": {
+                    "store_id": {
+                        "type": "STRING",
+                        "max_length": 20
+                    },
+                    "terminal_id": {
+                        "type": "STRING",
+                        "max_length": 20
+                    },
+                    "cashier_id": {
+                        "type": "STRING",
+                        "max_length": 20
+                    }
+                }
+            }
+        },
+        "indexes": [
+            "user_id",
+            "timestamp",
+            "transaction_type",
+            "status"
+        ],
+        "partitions": [
+            "timestamp",
+            "transaction_type"
+        ]
+    }
+}

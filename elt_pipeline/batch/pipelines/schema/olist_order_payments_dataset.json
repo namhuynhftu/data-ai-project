@@ -1,0 +1,55 @@
+{
+  "table_name": "olist_order_payments_dataset",
+  "description": "Payment information for orders including payment type and installments",
+  "columns": [
+    {
+      "name": "order_id",
+      "type": "VARCHAR(50)",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Unique identifier for the order"
+    },
+    {
+      "name": "payment_sequential",
+      "type": "INT",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Sequential number for payment within the order"
+    },
+    {
+      "name": "payment_type",
+      "type": "VARCHAR(20)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Payment method (credit_card, boleto, etc.)"
+    },
+    {
+      "name": "payment_installments",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Number of installments for the payment"
+    },
+    {
+      "name": "payment_value",
+      "type": "DECIMAL(10,2)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Payment amount"
+    }
+  ],
+  "constraints": {
+    "primary_key": ["order_id", "payment_sequential"],
+    "foreign_keys": [
+      {
+        "column": "order_id",
+        "references_table": "olist_orders_dataset",
+        "references_column": "order_id"
+      }
+    ],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 103000,
+  "data_classification": "financial"
+}

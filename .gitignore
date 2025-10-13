@@ -1,6 +1,4 @@
-# Data files - ignore all generated data files
-*.json
-*.csv
+
 
 # Python cache
 __pycache__/

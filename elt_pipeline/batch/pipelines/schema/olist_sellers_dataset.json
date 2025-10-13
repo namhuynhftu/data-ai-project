@@ -1,0 +1,42 @@
+{
+  "table_name": "olist_sellers_dataset",
+  "description": "Seller information including location data",
+  "columns": [
+    {
+      "name": "seller_id",
+      "type": "VARCHAR(50)",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Unique identifier for the seller"
+    },
+    {
+      "name": "seller_zip_code_prefix",
+      "type": "VARCHAR(10)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "First 5 digits of seller zip code"
+    },
+    {
+      "name": "seller_city",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Seller city name"
+    },
+    {
+      "name": "seller_state",
+      "type": "VARCHAR(2)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Seller state abbreviation"
+    }
+  ],
+  "constraints": {
+    "primary_key": ["seller_id"],
+    "foreign_keys": [],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 3000,
+  "data_classification": "master_data"
+}

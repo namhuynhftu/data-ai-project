@@ -1,0 +1,77 @@
+{
+  "table_name": "olist_products_dataset",
+  "description": "Product catalog with dimensions and category information",
+  "columns": [
+    {
+      "name": "product_id",
+      "type": "VARCHAR(50)",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Unique identifier for the product"
+    },
+    {
+      "name": "product_category_name",
+      "type": "VARCHAR(100)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Product category name in Portuguese"
+    },
+    {
+      "name": "product_name_length",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Length of product name"
+    },
+    {
+      "name": "product_description_length",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Length of product description"
+    },
+    {
+      "name": "product_photos_qty",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Number of product photos"
+    },
+    {
+      "name": "product_weight_g",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Product weight in grams"
+    },
+    {
+      "name": "product_length_cm",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Product length in centimeters"
+    },
+    {
+      "name": "product_height_cm",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Product height in centimeters"
+    },
+    {
+      "name": "product_width_cm",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Product width in centimeters"
+    }
+  ],
+  "constraints": {
+    "primary_key": ["product_id"],
+    "foreign_keys": [],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 32000,
+  "data_classification": "master_data"
+}

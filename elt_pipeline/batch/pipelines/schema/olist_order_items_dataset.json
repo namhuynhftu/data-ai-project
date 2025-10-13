@@ -1,0 +1,79 @@
+{
+  "table_name": "olist_order_items_dataset",
+  "description": "Individual items within each order with pricing and shipping info",
+  "columns": [
+    {
+      "name": "order_id",
+      "type": "VARCHAR(50)",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Unique identifier for the order"
+    },
+    {
+      "name": "order_item_id",
+      "type": "INT",
+      "nullable": false,
+      "primary_key": true,
+      "description": "Sequential number identifying the item within the order"
+    },
+    {
+      "name": "product_id",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Unique identifier for the product"
+    },
+    {
+      "name": "seller_id",
+      "type": "VARCHAR(50)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Unique identifier for the seller"
+    },
+    {
+      "name": "shipping_limit_date",
+      "type": "DATETIME",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Deadline for shipping the item"
+    },
+    {
+      "name": "price",
+      "type": "DECIMAL(10,2)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Item price"
+    },
+    {
+      "name": "freight_value",
+      "type": "DECIMAL(10,2)",
+      "nullable": true,
+      "primary_key": false,
+      "description": "Freight cost for the item"
+    }
+  ],
+  "constraints": {
+    "primary_key": ["order_id", "order_item_id"],
+    "foreign_keys": [
+      {
+        "column": "order_id",
+        "references_table": "olist_orders_dataset",
+        "references_column": "order_id"
+      },
+      {
+        "column": "product_id",
+        "references_table": "olist_products_dataset",
+        "references_column": "product_id"
+      },
+      {
+        "column": "seller_id",
+        "references_table": "olist_sellers_dataset",
+        "references_column": "seller_id"
+      }
+    ],
+    "unique_keys": [],
+    "indexes": []
+  },
+  "estimated_row_count": 112000,
+  "data_classification": "transactional"
+}
