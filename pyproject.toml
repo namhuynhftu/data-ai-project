@@ -151,6 +151,7 @@ dependencies = [
     "urllib3>=2.5.0",
     "psycopg2-binary>=2.9.9",
     "mysql-connector-python>=9.4.0",
+    "pytest-cov>=7.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]
