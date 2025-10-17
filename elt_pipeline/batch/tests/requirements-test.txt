@@ -26,3 +26,4 @@ factory-boy>=3.2.0  # For test data generation
 # Test reporting
 pytest-html>=3.1.0  # HTML test reports
 pytest-xdist>=3.0.0  # Parallel test execution
+coverage>=7.0.0  # Coverage reporting

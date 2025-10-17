@@ -1,149 +1,150 @@
-#!/usr/bin/env python3
 """
-Comprehensive test runner for the batch pipeline.
-
-This script runs all tests and provides a summary of test coverage
-and results for the entire batch pipeline system.
+Test runner for batch pipeline operations.
+Runs all unit tests for the ops modules with coverage reporting.
 """
-
 import pytest
 import sys
 import os
 from pathlib import Path
 
-# Add the project root to Python path
-project_root = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
 
-
-def run_all_tests():
-    """Run all tests for the batch pipeline with coverage reporting."""
+def main():
+    """Run all tests with coverage and reporting."""
     
-    test_directory = Path(__file__).parent
+    # Get the test directory
+    test_dir = Path(__file__).parent
+    ops_dir = test_dir.parent / "ops"
     
-    # Define test modules to run
-    test_modules = [
-        "test_mysql_loader.py",
-        "test_minio_loader.py", 
-        "test_snowflake_loader.py",
-        "test_operations_integration.py"
+    print("🧪 Running Batch Pipeline Operations Tests")
+    print("=" * 60)
+    print(f"Test directory: {test_dir}")
+    print(f"Ops directory: {ops_dir}")
+    print("-" * 60)
+    
+    # Test configuration
+    pytest_args = [
+        str(test_dir),  # Test directory
+        "-v",           # Verbose output
+        "--tb=short",   # Short traceback format
+        "--strict-markers",  # Strict marker handling
+        "-ra",          # Show all test results
+        f"--cov={ops_dir}",  # Coverage for ops directory
+        "--cov-report=term-missing",  # Show missing lines
+        "--cov-report=html:htmlcov",  # HTML coverage report
+        "--cov-fail-under=80",  # Fail if coverage below 80%
     ]
     
-    print("🚀 Running Batch Pipeline Test Suite")
-    print("=" * 50)
+    # Add test files explicitly
+    test_files = [
+        "test_extract_data_from_mysql.py",
+        "test_load_data_to_minio.py", 
+        "test_load_data_to_snowflake.py"
+    ]
     
-    # Run each test module
-    all_passed = True
-    results = {}
+    print("📋 Test files to execute:")
+    for test_file in test_files:
+        test_path = test_dir / test_file
+        if test_path.exists():
+            print(f"   ✅ {test_file}")
+        else:
+            print(f"   ❌ {test_file} (missing)")
     
-    for test_module in test_modules:
-        test_path = test_directory / test_module
+    print("-" * 60)
+    
+    # Run pytest
+    try:
+        exit_code = pytest.main(pytest_args)
         
-        if not test_path.exists():
-            print(f"⚠️  Test module {test_module} not found, skipping...")
-            continue
-            
-        print(f"\n📋 Running {test_module}...")
-        print("-" * 30)
+        print("\n" + "=" * 60)
+        if exit_code == 0:
+            print("✅ All tests passed!")
+            print("📊 Coverage report generated in htmlcov/index.html")
+        else:
+            print("❌ Some tests failed or coverage is below threshold")
+            print("📊 Check the output above for details")
         
-        # Run pytest for this module
-        result = pytest.main([
-            str(test_path),
-            "-v",
-            "--tb=short",
-            "--no-header"
-        ])
+        print("=" * 60)
+        return exit_code
         
-        results[test_module] = result
-        if result != 0:
-            all_passed = False
-    
-    # Print summary
-    print("\n" + "=" * 50)
-    print("📊 TEST SUITE SUMMARY")
-    print("=" * 50)
-    
-    for test_module, result in results.items():
-        status = "✅ PASSED" if result == 0 else "❌ FAILED"
-        print(f"{test_module:<35} {status}")
-    
-    print("\n" + "=" * 50)
-    if all_passed:
-        print("🎉 ALL TESTS PASSED! Your batch pipeline is ready for production.")
-    else:
-        print("⚠️  SOME TESTS FAILED. Please review the output above.")
-    print("=" * 50)
-    
-    return 0 if all_passed else 1
-
-
-def run_coverage_tests():
-    """Run tests with coverage reporting."""
-    
-    test_directory = Path(__file__).parent
-    
-    print("🚀 Running Batch Pipeline Tests with Coverage")
-    print("=" * 60)
-    
-    # Run pytest with coverage
-    result = pytest.main([
-        str(test_directory),
-        "-v",
-        "--cov=elt_pipeline.batch",
-        "--cov-report=term-missing",
-        "--cov-report=html:htmlcov",
-        "--tb=short"
-    ])
-    
-    if result == 0:
-        print("\n🎉 All tests passed with coverage report generated!")
-        print("📈 Coverage report available in 'htmlcov/index.html'")
-    else:
-        print("\n⚠️  Some tests failed. Please review the output above.")
-    
-    return result
+    except Exception as e:
+        print(f"❌ Error running tests: {e}")
+        return 1
 
 
 def run_specific_test(test_name):
-    """Run a specific test module or test function."""
+    """Run a specific test file."""
+    test_dir = Path(__file__).parent
+    test_file = test_dir / f"test_{test_name}.py"
     
-    test_directory = Path(__file__).parent
+    if not test_file.exists():
+        print(f"❌ Test file not found: {test_file}")
+        return 1
     
-    if test_name.endswith('.py'):
-        test_path = test_directory / test_name
-    else:
-        # Search for test function across all modules
-        test_path = str(test_directory)
-        test_name = f"-k {test_name}"
+    print(f"🧪 Running specific test: {test_name}")
+    print("-" * 40)
     
-    print(f"🎯 Running specific test: {test_name}")
-    print("=" * 50)
+    pytest_args = [
+        str(test_file),
+        "-v",
+        "--tb=short"
+    ]
     
-    if isinstance(test_path, Path):
-        result = pytest.main([str(test_path), "-v"])
-    else:
-        result = pytest.main([test_path, test_name, "-v"])
-    
-    return result
+    return pytest.main(pytest_args)
+
+
+def show_coverage():
+    """Show coverage report."""
+    try:
+        import coverage
+        
+        cov = coverage.Coverage()
+        cov.load()
+        cov.report()
+        
+    except ImportError:
+        print("❌ Coverage module not installed")
+        print("Install with: pip install coverage")
+        return 1
+    except Exception as e:
+        print(f"❌ Error showing coverage: {e}")
+        return 1
 
 
 if __name__ == "__main__":
-    
     if len(sys.argv) > 1:
         command = sys.argv[1]
         
         if command == "coverage":
-            exit_code = run_coverage_tests()
-        elif command == "specific" and len(sys.argv) > 2:
-            test_name = sys.argv[2]
+            exit_code = show_coverage()
+        elif command.startswith("test_"):
+            # Remove "test_" prefix if provided
+            test_name = command[5:] if command.startswith("test_") else command
             exit_code = run_specific_test(test_name)
-        else:
+        elif command in ["mysql", "minio", "snowflake"]:
+            # Map service names to test names
+            service_map = {
+                "mysql": "extract_data_from_mysql",
+                "minio": "load_data_to_minio", 
+                "snowflake": "load_data_to_snowflake"
+            }
+            exit_code = run_specific_test(service_map[command])
+        elif command == "--help" or command == "-h":
+            print("🧪 Batch Pipeline Test Runner")
+            print("-" * 30)
             print("Usage:")
-            print("  python run_tests.py                 # Run all tests")
-            print("  python run_tests.py coverage        # Run tests with coverage")
-            print("  python run_tests.py specific <test> # Run specific test")
+            print("  python run_tests.py              # Run all tests")
+            print("  python run_tests.py mysql        # Test MySQL ops")
+            print("  python run_tests.py minio        # Test MinIO ops")
+            print("  python run_tests.py snowflake    # Test Snowflake ops")
+            print("  python run_tests.py coverage     # Show coverage report")
+            print("  python run_tests.py --help       # Show this help")
+            exit_code = 0
+        else:
+            print(f"❌ Unknown command: {command}")
+            print("Use --help for available commands")
             exit_code = 1
     else:
-        exit_code = run_all_tests()
+        # Run all tests
+        exit_code = main()
     
     sys.exit(exit_code)
