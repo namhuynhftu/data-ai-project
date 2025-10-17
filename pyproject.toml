@@ -150,6 +150,7 @@ dependencies = [
     "cffi>=1.17.1",
     "urllib3>=2.5.0",
     "psycopg2-binary>=2.9.9",
+    "mysql-connector-python>=9.4.0",
 ]
 
 [tool.hatch.build.targets.wheel]

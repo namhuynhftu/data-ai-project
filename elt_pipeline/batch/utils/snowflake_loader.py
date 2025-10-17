@@ -5,11 +5,12 @@ import os
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, Any
+from dotenv import load_dotenv
 
+import snowflake.connector
 from fastapi import params
 from minio import Minio
 from minio.error import S3Error
-from snowflake.connector import SnowflakeConnection
 from elt_pipeline.batch.utils.data_loader import DataLoader
 from elt_pipeline.logger_utils import get_snowflake_logger
 
@@ -22,20 +23,30 @@ class SnowflakeLoader(DataLoader):
         self.logger = get_snowflake_logger()
     
     def get_db_connection(self):
-        """Establish Snowflake connection."""
+        """Establish Snowflake connection using JWT authentication with keypair."""
         try:
             if self._connection is None:
-                self._connection = SnowflakeConnection(
-                    user=self.params['user'],
-                    password=self.params['password'],
-                    account=self.params['account'],
-                    warehouse=self.params['warehouse'],
-                    database=self.params['database'],
-                    schema=self.params['schema']
+                # Load environment variables
+                load_dotenv()
+                
+                self._connection = snowflake.connector.connect(
+                    account=os.getenv("SNOWFLAKE_ACCOUNT") or self.params.get('account'),
+                    user=os.getenv("SNOWFLAKE_USER") or self.params.get('user'),
+                    private_key_file=os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH") or self.params.get('private_key_file'),
+                    private_key_file_pwd=os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD") or self.params.get('private_key_file_pwd'),
+                    warehouse=os.getenv("SNOWFLAKE_WAREHOUSE") or self.params.get('warehouse'),
+                    database=os.getenv("SNOWFLAKE_DATABASE") or self.params.get('database'),
+                    schema=os.getenv("SNOWFLAKE_SCHEMA") or self.params.get('schema', 'RAW_DATA'),
+                    role=os.getenv("SNOWFLAKE_ROLE") or self.params.get('role'),
+                    authenticator='SNOWFLAKE_JWT'
                 )
+                
                 # Test connection
-                self._connection.cursor().execute("SELECT 1")
-                self.logger.info("Snowflake connection established successfully")
+                cursor = self._connection.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+                
+                self.logger.info("Snowflake connection established successfully using JWT authentication")
             return self._connection
         except Exception as e:
             self.logger.error(f"Snowflake connection failed: {e}")
@@ -44,6 +55,10 @@ class SnowflakeLoader(DataLoader):
     def extract_data(self, sql: str):
         pass
 
+    def create_internal_stage(self, stage_name: str, conn):
+        """Create an internal stage in Snowflake."""
+        pass 
+    
     def load_data(self, pd_data, conn):
         """Load data into Snowflake database"""
         try:

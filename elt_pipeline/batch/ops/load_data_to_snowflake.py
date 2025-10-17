@@ -1,234 +1,330 @@
-# Import data from Minio to stage to snowflake
+"""
+MinIO to Snowflake data loading with temp file fallback for local development.
+"""
 import os 
 from typing import Dict, Any
-from pathlib  import Path
-from io import BytesIO
 from datetime import datetime
-
-import pandas as pd
-from minio import Minio
-from minio.error import S3Error 
-from snowflake.connector import SnowflakeConnection
+from pathlib import Path
+from dotenv import load_dotenv
 
 from elt_pipeline.batch.utils.snowflake_loader import SnowflakeLoader
-from elt_pipeline.batch.utils.minio_loader import MinIOLoader
 from elt_pipeline.logger_utils import get_snowflake_logger, BatchOperation
 
-def load_data_to_snowflake(extracted_data: Dict[str, Any]):
-    """Read data from MinIO and load to Snowflake with ingestion_date handling."""
-    import snowflake.connector
-    from snowflake.connector.pandas_tools import write_pandas
-    from dotenv import load_dotenv
+load_dotenv()
+
+
+def load_minio_to_snowflake_via_stage_direct(extracted_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Complete workflow: Load data from MinIO to Snowflake via staging with temp file fallback.
+    """
+    logger = get_snowflake_logger()
+    table_name = extracted_data["table_config"]["targets"]["snowflake"]["target_table"]
     
-    load_dotenv()
+    logger.info("Loading to Snowflake", table=table_name)
+    
+    try:
+        # Phase 1: Load to Snowflake Stage
+        stage_result = load_data_to_snowflake_stage_direct(extracted_data)
+        
+        if not stage_result["success"]:
+            raise Exception("Failed to load data to Snowflake stage")
+        
+        # Phase 2: Load from Stage to Table
+        if not stage_result.get("already_loaded_to_table", False):
+            table_result = load_data_from_snowflake_stage_to_table(extracted_data, stage_result)
+            
+            if not table_result["success"]:
+                raise Exception("Failed to load data from stage to table")
+        else:
+            table_result = {
+                "success": True, 
+                "rows_loaded": stage_result.get("rows_staged", 0), 
+                "files_processed": stage_result.get("files_copied", 0)
+            }
+        
+        # Return results
+        return {
+            "success": True,
+            "total_rows_loaded": table_result["rows_loaded"],
+            "stage_name": stage_result["stage_name"],
+            "method": stage_result.get("method", "temp_file_fallback")
+        }
+        
+    except Exception as e:
+        logger.error("Failed to load to Snowflake", table=table_name, error=str(e))
+        raise
+
+
+
+
+def load_data_to_snowflake_stage_direct(extracted_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Load data to Snowflake stage with temp file fallback for localhost environments.
+    """
+    logger = get_snowflake_logger()
+    table_name = extracted_data["table_config"]["targets"]["snowflake"]["target_table"]
+    
+    try:
+        # Try direct MinIO loading first, fallback to temp files
+        try:
+            return _load_direct_from_minio(extracted_data, logger)
+        except Exception:
+            logger.info("Using temp file fallback", table=table_name)
+            return _load_via_temp_file(extracted_data, logger)
+    
+    except Exception as e:
+        logger.error("Stage loading failed", table=table_name, error=str(e))
+        raise
+            
+def _load_direct_from_minio(extracted_data: Dict[str, Any], logger):
+    """Direct MinIO loading - not supported for localhost development"""
+    raise Exception("Direct MinIO loading not supported for localhost. Using temp file fallback.")
+
+
+
+
+def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stage_info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Load data from Snowflake stage to final table with overwrite mode.
+    """
     logger = get_snowflake_logger()
     
     try:
-        # Get MinIO and table configuration
+        # Get configuration
         table_config = extracted_data["table_config"]
-        minio_config = extracted_data["minio_target_storage"]
-        minio_file_info = extracted_data["minio_file_info"]
         snowflake_target_table = table_config["targets"]["snowflake"]["target_table"]
+        stage_name = stage_info["stage_name"]
+        database = stage_info["database"]
+        schema = stage_info["schema"]
         
         # Check if we need to add ingestion_date column
         add_ingestion_column = extracted_data.get("add_ingestion_column", False)
         ingestion_date = extracted_data.get("ingestion_date")
         
-        with BatchOperation(logger, "loading", destination="snowflake", table=snowflake_target_table) as op:
+        with BatchOperation(logger, "stage_to_table", destination="snowflake", table=snowflake_target_table) as op:
             
-            # Initialize MinIO loader
-            minio_loader = MinIOLoader(minio_config)
-            minio_client = minio_loader.get_db_connection()
+            # Create Snowflake configuration for the loader
+            snowflake_config = {
+                "account": os.getenv("SNOWFLAKE_ACCOUNT"),
+                "user": os.getenv("SNOWFLAKE_USER"),
+                "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH"),
+                "private_key_file_pwd": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD"),
+                "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
+                "database": os.getenv("SNOWFLAKE_DATABASE"),
+                "schema": os.getenv("SNOWFLAKE_SCHEMA"),
+                "role": os.getenv("SNOWFLAKE_ROLE")
+            }
             
-            # Get file information from the MinIO loading result
-            bucket_name = minio_file_info["bucket"]
-            file_path = minio_file_info["file_name"]
+            # Initialize SnowflakeLoader
+            snowflake_loader = SnowflakeLoader(snowflake_config)
+            conn = snowflake_loader.get_db_connection()
+            cursor = conn.cursor()
             
-            logger.info("Reading data from MinIO", 
-                       bucket=bucket_name,
-                       file_path=file_path,
-                       target_table=snowflake_target_table,
-                       add_ingestion_column=add_ingestion_column,
-                       ingestion_date=ingestion_date)
-            
-            # Read data from MinIO
             try:
-                response = minio_client.get_object(bucket_name, file_path)
-                data = response.read()
-                df = pd.read_parquet(BytesIO(data))
+                # Truncate table for overwrite mode
+                truncate_sql = f"TRUNCATE TABLE {database}.{schema}.{snowflake_target_table.upper()}"
+                cursor.execute(truncate_sql)
+                logger.info("Table truncated", table=snowflake_target_table)
                 
-                # Clean column names for Snowflake compatibility
-                df.columns = df.columns.str.upper().str.replace('"', '').str.replace("'", "")
-                
-                # Add ingestion_date column if requested
+                # Check if ingestion_date column exists, add if needed
                 if add_ingestion_column and ingestion_date:
-                    df['INGESTION_DATE'] = ingestion_date
-                    logger.info("Added ingestion_date column",
-                               ingestion_date=ingestion_date,
-                               column_added='INGESTION_DATE')
-                
-                logger.info("Data successfully read from MinIO",
-                           rows_read=len(df),
-                           file_path=file_path,
-                           columns=df.columns.tolist())
-                
-                logger.debug("DataFrame information",
-                            columns=df.columns.tolist(),
-                            dtypes=df.dtypes.to_dict())
-                
-                # Convert date columns to proper datetime format
-                date_conversions = []
-                for col in df.columns:
-                    # Check for various timestamp/date column patterns (but skip INGESTION_DATE)
-                    is_timestamp_col = any(pattern in col for pattern in ['DATE', 'TIME', '_AT', 'TIMESTAMP', 'CREATED', 'UPDATED', 'MODIFIED'])
-                    
-                    if is_timestamp_col and col != 'INGESTION_DATE':
-                        if df[col].dtype in ['int64', 'float64', 'object']:
-                            logger.debug("Converting column to datetime",
-                                       column=col,
-                                       original_dtype=str(df[col].dtype))
-                            try:
-                                df[col] = pd.to_datetime(df[col], errors='coerce')
-                                date_conversions.append(col)
-                            except Exception as e:
-                                logger.warning("Failed to convert column to datetime",
-                                             column=col,
-                                             error=str(e))
-                        
-                        # Convert datetime to string format for Snowflake compatibility
-                        if pd.api.types.is_datetime64_any_dtype(df[col]):
-                            logger.debug("Converting datetime column to string for Snowflake", column=col)
-                            df[col] = df[col].dt.strftime('%Y-%m-%d %H:%M:%S')
-                
-                if date_conversions:
-                    logger.info("Date column conversions completed", converted_columns=date_conversions)
-                
-                logger.debug("Final DataFrame information after conversions",
-                            dtypes=df.dtypes.to_dict(),
-                            columns=list(df.columns))
-                            
-            except Exception as e:
-                logger.error("Failed to read data from MinIO",
-                           bucket=bucket_name,
-                           file_path=file_path,
-                           error=str(e),
-                           error_type=type(e).__name__)
-                return
-            finally:
-                response.close()
-                response.release_conn()
-            
-            # Create Snowflake connection with JWT authentication
-            logger.debug("Establishing Snowflake connection with JWT authentication")
-            
-            # Check if JWT authentication is configured
-            authenticator = os.getenv("SNOWFLAKE_AUTHENTICATOR", "").lower()
-            private_key_path = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
-            
-            if authenticator == "jwt" and private_key_path:
-                # JWT authentication
-                logger.info("Using JWT authentication for Snowflake connection")
-                
-                # Read private key
-                with open(private_key_path, "rb") as key_file:
-                    private_key = key_file.read()
-                
-                conn = snowflake.connector.connect(
-                    account=os.getenv("SNOWFLAKE_ACCOUNT"),
-                    user=os.getenv("SNOWFLAKE_USER"),
-                    private_key=private_key,
-                    warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
-                    database=os.getenv("SNOWFLAKE_DATABASE"),
-                    schema=os.getenv("SNOWFLAKE_SCHEMA"),
-                    role=os.getenv("SNOWFLAKE_ROLE"),
-                )
-            else:
-                # Password authentication (fallback)
-                logger.info("Using password authentication for Snowflake connection")
-                conn = snowflake.connector.connect(
-                    account=os.getenv("SNOWFLAKE_ACCOUNT"),
-                    user=os.getenv("SNOWFLAKE_USER"),
-                    password=os.getenv("SNOWFLAKE_PASSWORD"),
-                    warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
-                    database=os.getenv("SNOWFLAKE_DATABASE"),
-                    schema=os.getenv("SNOWFLAKE_SCHEMA"),
-                    role=os.getenv("SNOWFLAKE_ROLE"),
-                )
-            
-            logger.info("Loading data to Snowflake",
-                       table=snowflake_target_table,
-                       rows_to_load=len(df),
-                       database=os.getenv("SNOWFLAKE_DATABASE"),
-                       schema=os.getenv("SNOWFLAKE_SCHEMA"),
-                       has_ingestion_column=add_ingestion_column)
-            
-            # Handle ingestion_date column management
-            if add_ingestion_column:
-                cursor = conn.cursor()
-                try:
-                    # Check if table exists and if it has INGESTION_DATE column
                     check_column_query = f"""
-                    SELECT COUNT(*) 
-                    FROM INFORMATION_SCHEMA.COLUMNS 
-                    WHERE TABLE_SCHEMA = '{os.getenv("SNOWFLAKE_SCHEMA")}' 
-                    AND TABLE_NAME = '{snowflake_target_table.upper()}' 
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_SCHEMA = '{schema}' AND TABLE_NAME = '{snowflake_target_table.upper()}' 
                     AND COLUMN_NAME = 'INGESTION_DATE'
                     """
-                    
                     cursor.execute(check_column_query)
                     column_exists = cursor.fetchone()[0] > 0
                     
                     if not column_exists:
-                        # Add INGESTION_DATE column if it doesn't exist
                         alter_table_query = f"""
-                        ALTER TABLE {os.getenv("SNOWFLAKE_DATABASE")}.{os.getenv("SNOWFLAKE_SCHEMA")}.{snowflake_target_table.upper()}
+                        ALTER TABLE {database}.{schema}.{snowflake_target_table.upper()}
                         ADD COLUMN INGESTION_DATE TIMESTAMP_NTZ
                         """
                         cursor.execute(alter_table_query)
-                        logger.info("Added INGESTION_DATE column to table",
-                                   table=snowflake_target_table,
-                                   column='INGESTION_DATE')
-                    else:
-                        logger.info("INGESTION_DATE column already exists in table",
-                                   table=snowflake_target_table,
-                                   column='INGESTION_DATE')
                 
-                except Exception as e:
-                    logger.warning("Failed to check/add INGESTION_DATE column",
-                                  table=snowflake_target_table,
-                                  error=str(e))
-                finally:
-                    cursor.close()
+                # Execute COPY INTO from stage to table
+                table_subfolder = snowflake_target_table.lower()
+                copy_sql = f"""
+                COPY INTO {database}.{schema}.{snowflake_target_table.upper()}
+                FROM @{stage_name}/{table_subfolder}
+                FILE_FORMAT = (TYPE = 'PARQUET')
+                MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
+                ON_ERROR = 'CONTINUE'
+                """
+                
+                cursor.execute(copy_sql)
+                copy_results = cursor.fetchall()
+                
+                # Parse COPY INTO results
+                rows_loaded = 0
+                files_processed = 0
+                for result in copy_results:
+                    rows_loaded += result[3]  # rows_loaded from each file
+                    files_processed += 1
+                
+                logger.info("Data copied to table", 
+                           table=snowflake_target_table,
+                           rows=rows_loaded,
+                           files=files_processed)
+                
+                # Update ingestion_date column if requested
+                if add_ingestion_column and ingestion_date and rows_loaded > 0:
+                    update_sql = f"""
+                    UPDATE {database}.{schema}.{snowflake_target_table.upper()}
+                    SET INGESTION_DATE = '{ingestion_date}'
+                    WHERE INGESTION_DATE IS NULL
+                    """
+                    cursor.execute(update_sql)
+                
+                # Update operation metrics
+                op.records_processed = rows_loaded
+                
+                return {
+                    "rows_loaded": rows_loaded,
+                    "files_processed": files_processed,
+                    "success": True
+                }
+                
+            finally:
+                cursor.close()
+                conn.close()
+                
+    except Exception as e:
+        logger.error("Loading from stage to table failed", 
+                    table=snowflake_target_table, 
+                    error=str(e))
+        raise
+
+
+def _load_via_temp_file(extracted_data: Dict[str, Any], logger) -> Dict[str, Any]:
+    """
+    Fallback method: Download data from MinIO to temp file, then load to Snowflake stage
+    """
+    from minio import Minio
+    
+    table_config = extracted_data["table_config"]
+    minio_config = extracted_data["minio_target_storage"]
+    minio_file_info = extracted_data["minio_file_info"]
+    snowflake_target_table = table_config["targets"]["snowflake"]["target_table"]
+    
+    with BatchOperation(logger, "temp_file_load", destination="snowflake_stage", table=snowflake_target_table) as op:
+        temp_file_path = None
+        
+        try:
+            # Create temp directory and file path
+            temp_dir = Path("data_temp")
+            temp_dir.mkdir(exist_ok=True)
+            temp_file_path = temp_dir / f"{snowflake_target_table}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.parquet"
             
-            # Use Snowflake pandas connector for efficient loading
-            success, nchunks, nrows, _ = write_pandas(
-                conn=conn,
-                df=df,
-                table_name=snowflake_target_table.upper(),
-                schema=os.getenv("SNOWFLAKE_SCHEMA"),
-                database=os.getenv("SNOWFLAKE_DATABASE"),
-                auto_create_table=False, 
-                overwrite=True,  
-                quote_identifiers=False
-            )
+            # Download from MinIO to temp file
+            _download_from_minio_to_temp(minio_config, minio_file_info, temp_file_path, logger)
+            
+            # Load temp file to Snowflake stage
+            stage_result = _load_temp_file_to_snowflake_stage(temp_file_path, snowflake_target_table, logger)
             
             # Update operation metrics
-            op.records_processed = nrows if success else 0
+            op.records_processed = minio_file_info.get("rows_loaded", 0)
             
-            if success:
-                logger.info("Data successfully loaded to Snowflake",
-                           table=snowflake_target_table,
-                           rows_loaded=nrows,
-                           chunks=nchunks)
-            else:
-                logger.error("Failed to load data to Snowflake",
-                           table=snowflake_target_table,
-                           attempted_rows=len(df))
-                
-            conn.close()
+            return stage_result
             
-    except Exception as e:
-        logger.error("Snowflake loading operation failed",
-                    error=str(e),
-                    error_type=type(e).__name__)
-        raise  
+        finally:
+            # Clean up temp file
+            if temp_file_path and temp_file_path.exists():
+                try:
+                    temp_file_path.unlink()
+                except Exception:
+                    pass  # Silent cleanup failure for MVP
+
+
+def _download_from_minio_to_temp(minio_config: Dict[str, Any], minio_file_info: Dict[str, Any], 
+                                temp_file_path: Path, logger):
+    """Download file from MinIO to local temp file"""
+    from minio import Minio
+    
+    # Parse MinIO endpoint
+    endpoint_val = minio_config.get("endpoint")
+    if endpoint_val and ":" in endpoint_val:
+        host, port = endpoint_val.split(":", 1)
+    else:
+        host = minio_config.get("host", "localhost")
+        port = minio_config.get("port", "9000")
+    
+    # Create MinIO client
+    minio_client = Minio(
+        f"{host}:{port}",
+        access_key=minio_config.get("access_key"),
+        secret_key=minio_config.get("secret_key"),
+        secure=minio_config.get("secure", False)
+    )
+    
+    # Download file
+    minio_client.fget_object(
+        minio_file_info["bucket"], 
+        minio_file_info["file_name"], 
+        str(temp_file_path)
+    )
+
+
+def _load_temp_file_to_snowflake_stage(temp_file_path: Path, table_name: str, logger) -> Dict[str, Any]:
+    """Load temp file to Snowflake internal stage using PUT command"""
+    
+    # Create Snowflake configuration
+    snowflake_config = {
+        "account": os.getenv("SNOWFLAKE_ACCOUNT"),
+        "user": os.getenv("SNOWFLAKE_USER"),
+        "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH"),
+        "private_key_file_pwd": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD"),
+        "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
+        "database": os.getenv("SNOWFLAKE_DATABASE"),
+        "schema": os.getenv("SNOWFLAKE_SCHEMA"),
+        "role": os.getenv("SNOWFLAKE_ROLE")
+    }
+    
+    # Initialize SnowflakeLoader
+    snowflake_loader = SnowflakeLoader(snowflake_config)
+    conn = snowflake_loader.get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Create internal stage if not exists
+        stage_name = "MINIO_STAGE_SHARED"
+        create_stage_sql = f"""
+        CREATE STAGE IF NOT EXISTS {os.getenv("SNOWFLAKE_DATABASE")}.{os.getenv("SNOWFLAKE_SCHEMA")}.{stage_name}
+        FILE_FORMAT = (TYPE = 'PARQUET')
+        COMMENT = 'Shared internal staging area for all tables'
+        """
+        cursor.execute(create_stage_sql)
+        
+        # Upload file to stage using PUT
+        table_subfolder = table_name.lower()
+        put_sql = f"PUT file://{temp_file_path.as_posix()} @{stage_name}/{table_subfolder}/"
+        cursor.execute(put_sql)
+        put_results = cursor.fetchall()
+        
+        # Count uploaded files
+        files_uploaded = len(put_results)
+        
+        logger.info("File uploaded to stage", 
+                   table=table_name,
+                   stage=stage_name,
+                   files=files_uploaded)
+        
+        return {
+            "stage_name": stage_name,
+            "rows_staged": 0,  # Will be counted during COPY INTO
+            "success": True,
+            "database": os.getenv("SNOWFLAKE_DATABASE"),
+            "schema": os.getenv("SNOWFLAKE_SCHEMA"),
+            "method": "temp_file_upload",
+            "already_loaded_to_table": False,
+            "files_copied": files_uploaded
+        }
+        
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+

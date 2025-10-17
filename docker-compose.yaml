@@ -7,13 +7,13 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - mysql_run:/var/run/mysqld
-      - ./data_source/brazilian-ecommerce:/var/lib/data:ro
+      - ./data_source/brazilian-ecommerce:/var/lib/data
       - ./infra/mysql_db/certs:/etc/mysql/certs:ro
 
     command: >
       --character-set-server=utf8mb4 
       --collation-server=utf8mb4_unicode_ci
-      --authentication-policy=caching_sha2_password
+      --default-authentication-plugin=caching_sha2_password
     ports: 
       - "3306:3306"
     environment:

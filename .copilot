@@ -3,7 +3,7 @@
 # This file contains rules and guidelines for AI assistants working in this project
 
 [protected_files]
-# These files should never be modified by AI agents
+# These files should never be modified or read by AI agents
 .env
 env_example.txt
 

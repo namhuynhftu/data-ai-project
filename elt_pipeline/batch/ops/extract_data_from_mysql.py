@@ -35,23 +35,25 @@ def load_run_config(config_path: str) -> Dict[str, Any]:
     # Load MinIO configuration from environment variables
     minio_target_storage = {
         "endpoint": os.getenv("MINIO_ENDPOINT"),
-        "access_key": os.getenv("MINIO_ROOT_USER"),
-        "secret_key": os.getenv("MINIO_ROOT_PASSWORD"),
+        "access_key": os.getenv("MINIO_ACCESS_KEY"),
+        "secret_key": os.getenv("MINIO_SECRET_KEY"),
         "bucket": os.getenv("MINIO_BUCKET"),
         "default_format": "parquet",
         "default_compression": "snappy",
         "secure": False  # For local development
     }
     
-    # Load Snowflake configuration from environment variables
+    # Load Snowflake configuration from environment variables (JWT authentication)
     snowflake_target_storage = {
         "account": os.getenv("SNOWFLAKE_ACCOUNT"),
         "user": os.getenv("SNOWFLAKE_USER"),
-        "password": os.getenv("SNOWFLAKE_PASSWORD"),
+        "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH"),
+        "private_key_file_pwd": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD"),
         "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
         "database": os.getenv("SNOWFLAKE_DATABASE"),
         "schema": os.getenv("SNOWFLAKE_SCHEMA", "RAW_DATA"),  # Default to RAW_DATA schema
-        "role": os.getenv("SNOWFLAKE_ROLE")
+        "role": os.getenv("SNOWFLAKE_ROLE"),
+        "authenticator": "SNOWFLAKE_JWT"  # Specify JWT authentication
     }
 
     return {
