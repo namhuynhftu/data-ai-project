@@ -28,11 +28,6 @@ vars:
   start_date: '2016-01-01'
   end_date: '2020-12-31'
   
-# Test configurations
-data_tests:
-  +store_failures: true  # Store test failures for debugging
-  +schema: test_failures
-
 # Snapshot configurations
 snapshots:
   snowflake:
@@ -43,7 +38,7 @@ snapshots:
 # Seed configurations
 seeds:
   snowflake:
-    +schema: seed_data
+    +schema: RAW_DATA
     +quote_columns: false
 
 
@@ -64,7 +59,7 @@ models:
         
     # Intermediate models: Ephemeral by default (can be overridden in individual files)
     intermediate:
-      +schema: INTERMEDIATE
+      +schema: STAGING
       +materialized: ephemeral
       +docs:
         node_color: "#FF8C00"  # Orange for intermediate

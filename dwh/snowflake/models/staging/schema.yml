@@ -81,10 +81,14 @@ models:
   - name: stg_order_reviews
     description: "Cleaned review data with sentiment analysis"
     columns:
+      - name: id
+        description: "Surrogate key for the review"
+        data_tests:
+          - unique
+          - not_null
       - name: review_id
         description: "Review unique identifier"
         data_tests:
-          - unique
           - not_null
       - name: order_id
         description: "Order unique identifier"
@@ -94,12 +98,14 @@ models:
         description: "Review score 1-5"
         data_tests:
           - accepted_values:
-              values: [1, 2, 3, 4, 5]
+              arguments:
+                values: [1, 2, 3, 4, 5]
       - name: review_sentiment
         description: "Calculated sentiment: positive, neutral, negative"
         data_tests:
           - accepted_values:
-              values: ['positive', 'neutral', 'negative']
+              arguments:
+                values: ['positive', 'neutral', 'negative']
       - name: has_comment
         description: "Boolean indicating if review has comment"
 
@@ -119,7 +125,8 @@ models:
         description: "Order status"
         data_tests:
           - accepted_values:
-              values: ['delivered', 'shipped', 'canceled', 'processing', 'invoiced', 'created', 'approved', 'unavailable']
+              arguments:
+                values: ['delivered', 'shipped', 'canceled', 'processing', 'invoiced', 'created', 'approved', 'unavailable']
       - name: order_purchase_timestamp
         description: "Purchase timestamp"
         data_tests:
@@ -130,7 +137,8 @@ models:
         description: "on_time, late, or unknown"
         data_tests:
           - accepted_values:
-              values: ['on_time', 'late', 'unknown']
+              arguments:
+                values: ['on_time', 'late', 'unknown']
 
   - name: stg_products
     description: "Cleaned product data with calculated dimensions"
@@ -150,7 +158,8 @@ models:
         description: "Categorized photo count"
         data_tests:
           - accepted_values:
-              values: ['no_photos', 'few_photos', 'moderate_photos', 'many_photos']
+              arguments:
+                values: ['no_photos', 'few_photos', 'moderate_photos', 'many_photos']
 
   - name: stg_sellers
     description: "Cleaned seller information"
