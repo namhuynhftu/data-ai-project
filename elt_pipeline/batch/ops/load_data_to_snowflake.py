@@ -96,6 +96,7 @@ def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stag
         stage_name = stage_info["stage_name"]
         database = stage_info["database"]
         schema = stage_info["schema"]
+        internal_snowflake_path = stage_info.get("internal_snowflake_path")
         
         # Check if we need to add ingestion_date column
         add_ingestion_column = extracted_data.get("add_ingestion_column", False)
@@ -147,7 +148,7 @@ def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stag
                 table_subfolder = snowflake_target_table.lower()
                 copy_sql = f"""
                 COPY INTO {database}.{schema}.{snowflake_target_table.upper()}
-                FROM @{stage_name}/{table_subfolder}
+                FROM @{stage_name}/{table_subfolder}/{internal_snowflake_path}
                 FILE_FORMAT = (TYPE = 'PARQUET')
                 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
                 ON_ERROR = 'CONTINUE'
@@ -207,7 +208,7 @@ def _load_via_temp_file(extracted_data: Dict[str, Any], logger) -> Dict[str, Any
     minio_config = extracted_data["minio_target_storage"]
     minio_file_info = extracted_data["minio_file_info"]
     snowflake_target_table = table_config["targets"]["snowflake"]["target_table"]
-    
+    file_name = f"{snowflake_target_table}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.parquet"
     with BatchOperation(logger, "temp_file_load", destination="snowflake_stage", table=snowflake_target_table) as op:
         temp_file_path = None
         
@@ -215,7 +216,7 @@ def _load_via_temp_file(extracted_data: Dict[str, Any], logger) -> Dict[str, Any
             # Create temp directory and file path
             temp_dir = Path("data_temp")
             temp_dir.mkdir(exist_ok=True)
-            temp_file_path = temp_dir / f"{snowflake_target_table}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.parquet"
+            temp_file_path = temp_dir / file_name
             
             # Download from MinIO to temp file
             _download_from_minio_to_temp(minio_config, minio_file_info, temp_file_path, logger)
@@ -298,7 +299,8 @@ def _load_temp_file_to_snowflake_stage(temp_file_path: Path, table_name: str, lo
         
         # Upload file to stage using PUT
         table_subfolder = table_name.lower()
-        put_sql = f"PUT file://{temp_file_path.as_posix()} @{stage_name}/{table_subfolder}/"
+        internal_snowflake_path = f'{table_name}_{datetime.now().strftime("%Y%m%d_%H%M%S")}'.lower()
+        put_sql = f"PUT file://{temp_file_path.as_posix()} @{stage_name}/{table_subfolder}/{internal_snowflake_path}"
         cursor.execute(put_sql)
         put_results = cursor.fetchall()
         
@@ -318,6 +320,7 @@ def _load_temp_file_to_snowflake_stage(temp_file_path: Path, table_name: str, lo
             "schema": os.getenv("SNOWFLAKE_SCHEMA"),
             "method": "temp_file_upload",
             "already_loaded_to_table": False,
+            "internal_snowflake_path": internal_snowflake_path,
             "files_copied": files_uploaded
         }
         
