@@ -105,17 +105,17 @@ jobs:
         working-directory: ./dwh/snowflake
         run: uv run dbt debug -t ci
 
+      - name: Run dbt deps
+        working-directory: ./dwh/snowflake
+        run: uv run dbt deps -t ci
+
       - name: Run SQLFluff lint
         run: uv run sqlfluff lint models/ --dialect snowflake --format github-annotation
         working-directory: ./dwh/snowflake
         env:
           DBT_TARGET: ci
         continue-on-error: true
-
-      - name: Run dbt deps
-        working-directory: ./dwh/snowflake
-        run: uv run dbt deps -t ci
-
+        
       - name: Run dbt compile
         working-directory: ./dwh/snowflake
         run: uv run dbt compile -t ci
