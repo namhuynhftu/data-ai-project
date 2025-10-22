@@ -54,6 +54,6 @@ group_by_and_order_by_style = implicit
 project_dir = ./dwh/snowflake
 profiles_dir = .dbt
 # profile = dbt_sf
-target = dev
+# target = dev
 dbt_skip_compilation_error = True
 dbt_skip_connection_error = True
