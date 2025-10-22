@@ -107,6 +107,7 @@ jobs:
 
       - name: Run SQLFluff lint
         run: uv run sqlfluff lint dwh/snowflake/models/ --dialect snowflake --format github-annotation
+        working-directory: ./dwh/snowflake
         env:
           DBT_TARGET: ci
         continue-on-error: true
