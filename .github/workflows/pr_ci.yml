@@ -65,10 +65,7 @@ jobs:
           SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
           SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE}}
           SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
-          DBT_PROFILES_DIR: ${{ vars.DBT_PROFILES_DIR }}
-          DBT_PROJECT_DIR: ${{ vars.DBT_PROJECT_DIR }}
-        env:
-          DBT_PROFILES_DIR: ../../.dbt
+
       - name: Run SQLFluff lint
         run: |
           uv run sqlfluff lint dwh/snowflake/models/ --dialect snowflake --format github-annotation
@@ -95,8 +92,6 @@ jobs:
           SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
           SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
           SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
-          DBT_PROFILES_DIR: ${{ vars.DBT_PROFILES_DIR }}
-          DBT_PROJECT_DIR: ${{ vars.DBT_PROJECT_DIR }}
 
       - name: Run dbt tests
         working-directory: ./dwh/snowflake
@@ -112,8 +107,6 @@ jobs:
           SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
           SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
           SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
-          DBT_PROFILES_DIR: ${{ vars.DBT_PROFILES_DIR }}
-          DBT_PROJECT_DIR: ${{ vars.DBT_PROJECT_DIR }}
 
       - name: Upload dbt artifacts
         if: always()
