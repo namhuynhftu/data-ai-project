@@ -10,7 +10,7 @@ snowflake:
       warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
       schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
       authenticator: jwt
-      SNOWFLAKE_PRIVATE_KEY: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE') }}"
-      SNOWFLAKE_PRIVATE_KEY_PWD: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD') }}"
+      private_key_file_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE') }}"
+      private_key_file_pwd: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD') }}"
       threads: 4
       client_session_keep_alive: false
