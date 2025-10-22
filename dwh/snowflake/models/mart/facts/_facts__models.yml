@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: fact_orders_accumulating
+    description: >
+      **Accumulating snapshot fact table** tracking order lifecycle from purchase through delivery.
+      
+      **Business Purpose:** Monitor order fulfillment performance, delivery timeliness, and lifecycle metrics.
+      
+      **Grain:** One row per order (accumulating fact updates as order progresses through lifecycle)
+      
+      **Fact Type:** Accumulating Snapshot (multiple dates representing milestones)
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+      refresh_frequency: "hourly"
+    columns:
+      - name: order_id
+        description: "Primary key - Unique order identifier"
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Foreign key to dim_customer"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
+      - name: order_status
+        description: "Current order status (delivered, shipped, canceled, etc.)"
+        data_tests:
+          - not_null
+      - name: purchase_date
+        description: "Date when order was placed by customer"
+        data_tests:
+          - not_null
+      - name: approved_date
+        description: "Date when payment was approved"
+      - name: carrier_date
+        description: "Date when order was handed to carrier"
+      - name: delivered_date
+        description: "Date when order was delivered to customer"
+      - name: estimated_date
+        description: "Estimated delivery date promised to customer"
+      - name: purchase_to_approve_days
+        description: "Days between purchase and payment approval (lag metric)"
+      - name: approve_to_ship_days
+        description: "Days between approval and shipping (lag metric)"
+      - name: ship_to_deliver_days
+        description: "Days between shipping and delivery (lag metric)"
+      - name: on_time_flag
+        description: "Binary flag: 1 if delivered on/before estimated date, 0 otherwise"
+
+  - name: fact_order_items
+    description: >
+      **Transaction fact table** containing individual line items for each order.
+      
+      **Business Purpose:** Detailed product sales analysis, revenue attribution, and item-level metrics.
+      
+      **Grain:** One row per order line item (order_id + order_item_id)
+      
+      **Fact Type:** Transaction Fact (immutable after order completion)
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+
+  - name: fact_payments
+    description: >
+      **Transaction fact table** containing payment details for orders.
+      
+      **Business Purpose:** Payment method analysis, installment tracking, and revenue recognition.
+      
+      **Grain:** One row per payment transaction (order may have multiple payments)
+      
+      **Fact Type:** Transaction Fact
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+
+  - name: fact_reviews
+    description: >
+      **Periodic snapshot fact table** containing customer reviews and ratings.
+      
+      **Business Purpose:** Customer satisfaction analysis, product quality insights, and sentiment tracking.
+      
+      **Grain:** One row per review (one customer can review multiple orders)
+      
+      **Fact Type:** Periodic Snapshot
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"

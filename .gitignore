@@ -39,6 +39,7 @@ profiles.yml
 # Mysql dump files
 *.sock
 data/database/mysql_data/mysql.sock
+LEARN/
 
 # Other MySQL runtime files
 *.pid

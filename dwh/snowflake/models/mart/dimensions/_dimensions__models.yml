@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: >
+      **Customer dimension table** containing unique customer records enriched with geographic information.
+      
+      **Business Purpose:** Central reference for all customer analytics and segmentation.
+      
+      **Grain:** One row per unique customer
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+    columns:
+      - name: customer_key
+        description: "Surrogate key for customer dimension (generated hash)"
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Natural key - Unique customer identifier from source system"
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_unique_id
+        description: "Universal customer identifier across platforms"
+      - name: customer_zip_code_prefix
+        description: "Customer zip code prefix (first 5 digits)"
+      - name: customer_city
+        description: "Customer city name from customer profile"
+      - name: customer_state
+        description: "Customer state abbreviation (2 characters)"
+      - name: geo_city
+        description: "Geocoded city name from geolocation lookup"
+      - name: geo_state
+        description: "Geocoded state from geolocation lookup"
+
+  - name: dim_date
+    description: >
+      **Date dimension table** containing comprehensive date attributes for time-based analysis.
+      
+      **Business Purpose:** Standard date dimension for all temporal analytics.
+      
+      **Grain:** One row per calendar date
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+
+  - name: dim_geography
+    description: >
+      **Geography dimension table** containing Brazilian geographic reference data.
+      
+      **Business Purpose:** Geographic analysis and regional insights.
+      
+      **Grain:** One row per unique geographic location (zip code prefix)
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+
+  - name: dim_payment_type
+    description: >
+      **Payment type dimension** containing payment method reference data.
+      
+      **Business Purpose:** Payment method analysis and trends.
+      
+      **Grain:** One row per payment type
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+
+  - name: dim_product
+    description: >
+      **Product dimension table** containing product master data with category translations.
+      
+      **Business Purpose:** Product performance analysis and category insights.
+      
+      **Grain:** One row per unique product
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+
+  - name: dim_seller
+    description: >
+      **Seller dimension table** containing seller/merchant information with geographic data.
+      
+      **Business Purpose:** Seller performance analysis and geographic distribution.
+      
+      **Grain:** One row per unique seller
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"

@@ -27,19 +27,6 @@ vars:
   # Project-specific variables
   start_date: '2016-01-01'
   end_date: '2020-12-31'
-  
-# Snapshot configurations
-snapshots:
-  snowflake:
-    +target_schema: snapshots
-    +strategy: timestamp
-    +updated_at: updated_at
-
-# Seed configurations
-seeds:
-  snowflake:
-    +schema: RAW_DATA
-    +quote_columns: false
 
 
 # Configuring models
@@ -60,7 +47,7 @@ models:
     # Intermediate models: Ephemeral by default (can be overridden in individual files)
     intermediate:
       +schema: STAGING
-      +materialized: ephemeral
+      +materialized: view
       +docs:
         node_color: "#FF8C00"  # Orange for intermediate
       +meta:

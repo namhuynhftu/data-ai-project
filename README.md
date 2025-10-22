@@ -324,7 +324,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Nam Huynh**
 - GitHub: [@namhuynhftu](https://github.com/namhuynhftu)
-- Email: nam.huynh@example.com
+- Email: namhuynh.ftu@gmail.com
 
 ## 🙏 Acknowledgments
 
