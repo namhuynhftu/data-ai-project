@@ -8,7 +8,6 @@ on:
       - "dwh/snowflake/**/*.yml"
       - "dwh/snowflake/dbt_project.yml"
       - ".github/workflows/pr_ci.yml"
-      - ".dbt/profiles.yml"
 
 jobs:
   PR_CI:
@@ -68,7 +67,8 @@ jobs:
           SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
           DBT_PROFILES_DIR: ${{ vars.DBT_PROFILES_DIR }}
           DBT_PROJECT_DIR: ${{ vars.DBT_PROJECT_DIR }}
-
+        env:
+          DBT_PROFILES_DIR: ../../.dbt
       - name: Run SQLFluff lint
         run: |
           uv run sqlfluff lint dwh/snowflake/models/ --dialect snowflake --format github-annotation
