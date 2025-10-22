@@ -24,7 +24,7 @@ with source_data as (
         case when delivered_date <= estimated_date then 1 else 0 end as on_time_flag,
         {{ dbt.current_timestamp() }} as processed_at
     from {{ ref('int_orders_lifecycle') }}
-    
+
     {% if is_incremental() %}
         -- Incremental logic: only process orders modified since last run
         where purchase_date > (select max(purchase_date) from {{ this }})

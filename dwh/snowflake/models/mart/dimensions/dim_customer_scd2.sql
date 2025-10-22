@@ -94,19 +94,19 @@ from final
 {% else %}
 
 -- Initial load
-select
-    customer_key,
-    customer_id,
-    customer_unique_id,
-    customer_zip_code_prefix,
-    customer_city,
-    customer_state,
-    geo_city,
-    geo_state,
-    effective_date,
-    end_date,
-    is_current,
-    row_hash
-from source_data
+    select
+        customer_key,
+        customer_id,
+        customer_unique_id,
+        customer_zip_code_prefix,
+        customer_city,
+        customer_state,
+        geo_city,
+        geo_state,
+        effective_date,
+        end_date,
+        is_current,
+        row_hash
+    from source_data
 
 {% endif %}

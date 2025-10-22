@@ -119,7 +119,7 @@ jobs:
 
       - name: Run dbt tests
         working-directory: ./dwh/snowflake
-        run: uv run dbt test -t ci --select tag:staging tag:intermediate
+        run: uv run dbt test -t ci 
 
       - name: Upload dbt artifacts
         if: always()
