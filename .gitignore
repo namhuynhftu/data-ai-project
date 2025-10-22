@@ -33,8 +33,7 @@ venv/
 .DS_Store
 
 # Ignore dbt profile
-./dbt/profiles.yml
-profiles.yml
+# profiles.yml
 
 # Mysql dump files
 *.sock

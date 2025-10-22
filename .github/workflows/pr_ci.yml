@@ -2,7 +2,7 @@ name: PR CI - SQLFluff Linting and dbt Testing
 
 on:
   pull_request:
-    branches: [main, develop, feature/*]
+    branches: [main, dev, develop, feature/*]
     paths:
       - "dwh/snowflake/**/*.sql"
       - "dwh/snowflake/**/*.yml"
@@ -12,7 +12,7 @@ on:
 jobs:
   PR_CI:
     runs-on: ubuntu-latest
-    
+    environment: SNOWFLAKE_USER
     defaults:
       run:
         working-directory: ./
