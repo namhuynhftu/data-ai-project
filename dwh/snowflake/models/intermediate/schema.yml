@@ -1,0 +1,96 @@
+version: 2
+
+models:
+  - name: int_customers_geocoded
+    description: >
+      **Intermediate model** enriching customer data with geocoded city and state information.
+      
+      **Purpose:** Combines customer profile with geolocation data for geographic analysis.
+      
+      **Transformation:** Joins customers with geolocation lookup by zip code prefix.
+    meta:
+      layer: "intermediate"
+    columns:
+      - name: customer_id
+        description: "Unique customer identifier"
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_unique_id
+        description: "Universal customer identifier"
+      - name: customer_zip_code_prefix
+        description: "Customer zip code prefix for geographic matching"
+      - name: customer_city
+        description: "Customer's self-reported city name"
+      - name: customer_state
+        description: "Customer's self-reported state"
+      - name: geo_city
+        description: "Geocoded city name from official geolocation data"
+      - name: geo_state
+        description: "Geocoded state from official geolocation data"
+
+  - name: int_order_items_enriched
+    description: >
+      **Intermediate model** enriching order items with product and seller details.
+      
+      **Purpose:** Combines order items with product and seller dimensions for analysis.
+    meta:
+      layer: "intermediate"
+
+  - name: int_orders_lifecycle
+    description: >
+      **Intermediate model** tracking complete order lifecycle with all milestone dates.
+      
+      **Purpose:** Consolidates order status transitions for accumulating snapshot fact table.
+      
+      **Business Logic:** Captures purchase, approval, shipping, and delivery dates.
+    meta:
+      layer: "intermediate"
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Customer who placed the order"
+        data_tests:
+          - not_null
+      - name: order_status
+        description: "Current order status"
+      - name: purchase_date
+        description: "When order was placed"
+        data_tests:
+          - not_null
+      - name: approved_date
+        description: "When payment was approved"
+      - name: carrier_date
+        description: "When handed to logistics carrier"
+      - name: delivered_date
+        description: "When delivered to customer"
+      - name: estimated_date
+        description: "Promised delivery date"
+
+  - name: int_products_cleaned
+    description: >
+      **Intermediate model** cleaning and standardizing product data with category translations.
+      
+      **Purpose:** Enriches products with English category names and validates data quality.
+    meta:
+      layer: "intermediate"
+
+  - name: int_reviews_cleaned
+    description: >
+      **Intermediate model** processing and enriching customer review data.
+      
+      **Purpose:** Standardizes review scores, timestamps, and sentiment analysis preparation.
+    meta:
+      layer: "intermediate"
+
+  - name: int_sellers_geocoded
+    description: >
+      **Intermediate model** enriching seller data with geocoded location information.
+      
+      **Purpose:** Combines seller profile with geolocation data for regional analysis.
+    meta:
+      layer: "intermediate"
