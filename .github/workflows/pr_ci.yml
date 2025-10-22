@@ -106,7 +106,7 @@ jobs:
         run: uv run dbt debug -t ci
 
       - name: Run SQLFluff lint
-        run: uv run sqlfluff lint dwh/snowflake/models/ --dialect snowflake --format github-annotation
+        run: uv run sqlfluff lint models/ --dialect snowflake --format github-annotation
         working-directory: ./dwh/snowflake
         env:
           DBT_TARGET: ci
