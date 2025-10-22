@@ -8,6 +8,7 @@ on:
       - "dwh/snowflake/**/*.yml"
       - "dwh/snowflake/dbt_project.yml"
       - ".github/workflows/pr_ci.yml"
+      - ".dbt/profiles.yml"
 
 jobs:
   PR_CI:
@@ -63,8 +64,10 @@ jobs:
           SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
           SNOWFLAKE_ROLE: ${{ vars.SNOWFLAKE_ROLE }}
           SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
-          SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
-          SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PWD }}
+          SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE}}
+          SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
+          DBT_PROFILES_DIR: ${{ vars.DBT_PROFILES_DIR }}
+          DBT_PROJECT_DIR: ${{ vars.DBT_PROJECT_DIR }}
 
       - name: Run SQLFluff lint
         run: |
@@ -90,8 +93,10 @@ jobs:
           SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
           SNOWFLAKE_ROLE: ${{ vars.SNOWFLAKE_ROLE }}
           SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
-          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
-          SNOWFLAKE_PRIVATE_KEY_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PWD }}
+          SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
+          SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
+          DBT_PROFILES_DIR: ${{ vars.DBT_PROFILES_DIR }}
+          DBT_PROJECT_DIR: ${{ vars.DBT_PROJECT_DIR }}
 
       - name: Run dbt tests
         working-directory: ./dwh/snowflake
@@ -105,8 +110,10 @@ jobs:
           SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
           SNOWFLAKE_ROLE: ${{ vars.SNOWFLAKE_ROLE }}
           SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
-          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
-          SNOWFLAKE_PRIVATE_KEY_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_PWD }}
+          SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
+          SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
+          DBT_PROFILES_DIR: ${{ vars.DBT_PROFILES_DIR }}
+          DBT_PROJECT_DIR: ${{ vars.DBT_PROJECT_DIR }}
 
       - name: Upload dbt artifacts
         if: always()
