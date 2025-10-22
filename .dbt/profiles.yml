@@ -9,7 +9,7 @@ snowflake:
       database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
       warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
       schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
-      authenticator: jwt
+      authenticator: SNOWFLAKE_JWT
       private_key_file: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE') }}"
       private_key_file_pwd: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD') }}"
       threads: 4
