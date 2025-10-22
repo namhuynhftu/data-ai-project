@@ -30,7 +30,7 @@ jobs:
       # Where we’ll write the PEM on the runner
       SNOWFLAKE_PRIVATE_KEY_PATH:      ${{ github.workspace }}/.dbt/key.p8
       # Change this to match dbt_project.yml -> profile:
-      PROFILE_NAME: fa_olist
+      PROFILE_NAME: snowflake
 
     defaults:
       run:
