@@ -41,7 +41,7 @@ venv/
 *.sock
 data/database/mysql_data/mysql.sock
 LEARN/
-
+data_temp/
 # Other MySQL runtime files
 *.pid
 *.err
