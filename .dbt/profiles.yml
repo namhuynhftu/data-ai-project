@@ -11,5 +11,6 @@ snowflake:
       schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
       authenticator: jwt
       private_key: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD') }}"
       threads: 4
       client_session_keep_alive: false
