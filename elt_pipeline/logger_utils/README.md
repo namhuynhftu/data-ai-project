@@ -1,4 +1,4 @@
-# ELT Pipeline Logging System
+git # ELT Pipeline Logging System
 
 This document describes the centralized logging system for the ELT pipeline, which provides unified, structured logging across all pipeline components.
 
