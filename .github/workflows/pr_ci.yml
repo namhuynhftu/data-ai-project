@@ -2,7 +2,7 @@ name: PR CI - SQLFluff Linting and dbt Testing
 
 on:
   pull_request:
-    branches: [main, develop, feature/*]
+    branches: [main, dev, develop, feature/*]
     paths:
       - "dwh/snowflake/**/*.sql"
       - "dwh/snowflake/**/*.yml"
@@ -12,7 +12,26 @@ on:
 jobs:
   PR_CI:
     runs-on: ubuntu-latest
-    
+    environment: SNOWFLAKE
+
+    # ✅ One place for env so you don’t repeat keys per step
+    env:
+      DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
+      # Vars (non-secret)
+      SNOWFLAKE_ACCOUNT:   ${{ vars.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_DATABASE:  ${{ vars.SNOWFLAKE_DATABASE }}
+      SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
+      SNOWFLAKE_ROLE:      ${{ vars.SNOWFLAKE_ROLE }}
+      SNOWFLAKE_SCHEMA:    ${{ vars.SNOWFLAKE_SCHEMA }}
+      # Secrets
+      SNOWFLAKE_USER:                  ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PRIVATE_KEY_FILE:      ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}       # full PEM incl. BEGIN/END
+      SNOWFLAKE_PRIVATE_KEY_FILE_PWD:  ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
+      # Where we’ll write the PEM on the runner
+      SNOWFLAKE_PRIVATE_KEY_PATH:      ${{ github.workspace }}/.dbt/key.p8
+      # Change this to match dbt_project.yml -> profile:
+      PROFILE_NAME: snowflake
+
     defaults:
       run:
         working-directory: ./
@@ -42,71 +61,68 @@ jobs:
             ${{ runner.os }}-uv-
 
       - name: Install CI dependencies
-        run: |
-          uv sync --group pr_ci --no-dev
+        run: uv sync --group pr_ci --no-dev
         env:
           UV_SYSTEM_PYTHON: 1
 
       - name: Verify dbt installation
+        run: uv run dbt --version
+
+      # ✅ Create .dbt, write key, generate profiles.yml
+      - name: Prepare .dbt dir and write key
+        shell: bash
         run: |
-          uv run dbt --version
+          mkdir -p "$DBT_PROFILES_DIR"
+          if [ -z "${SNOWFLAKE_PRIVATE_KEY_FILE}" ]; then
+            echo "❌ Missing SNOWFLAKE_PRIVATE_KEY_FILE secret" >&2
+            exit 1
+          fi
+          printf '%s\n' "${SNOWFLAKE_PRIVATE_KEY_FILE}" > "$SNOWFLAKE_PRIVATE_KEY_PATH"
+          chmod 600 "$SNOWFLAKE_PRIVATE_KEY_PATH"
+
+      - name: Generate dbt profiles.yml (key-pair auth)
+        run: |
+          cat > "$DBT_PROFILES_DIR/profiles.yml" <<YAML
+          ${PROFILE_NAME}:
+            target: ci
+            outputs:
+              ci:
+                type: snowflake
+                account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+                user: "{{ env_var('SNOWFLAKE_USER') }}"
+                role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+                database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
+                warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
+                schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
+                authenticator: snowflake_jwt
+                private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+                private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD','') }}"
+                threads: 4
+                client_session_keep_alive: false
+          YAML
 
       - name: Run dbt debug
         working-directory: ./dwh/snowflake
-        run: |
-          uv run dbt debug -t ci
-        env:
-          DBT_PROFILES_DIR: ../../.dbt
-          SNOWFLAKE_ACCOUNT: ${{ vars.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_DATABASE: ${{ vars.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_ROLE: ${{ vars.SNOWFLAKE_ROLE }}
-          SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
-          SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
-          SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
-
-      - name: Run SQLFluff lint
-        run: |
-          uv run sqlfluff lint dwh/snowflake/models/ --dialect snowflake --format github-annotation
-        continue-on-error: true
+        run: uv run dbt debug -t ci
 
       - name: Run dbt deps
         working-directory: ./dwh/snowflake
-        run: |
-          uv run dbt deps -t ci
-        env:
-          DBT_PROFILES_DIR: ../../.dbt
+        run: uv run dbt deps -t ci
 
+      - name: Run SQLFluff lint
+        run: uv run sqlfluff lint models/ --dialect snowflake --format github-annotation
+        working-directory: ./dwh/snowflake
+        env:
+          DBT_TARGET: ci
+        continue-on-error: true
+        
       - name: Run dbt compile
         working-directory: ./dwh/snowflake
-        run: |
-          uv run dbt compile -t ci
-        env:
-          DBT_PROFILES_DIR: ../../.dbt
-          SNOWFLAKE_ACCOUNT: ${{ vars.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_DATABASE: ${{ vars.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_ROLE: ${{ vars.SNOWFLAKE_ROLE }}
-          SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
-          SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
-          SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
+        run: uv run dbt compile -t ci
 
       - name: Run dbt tests
         working-directory: ./dwh/snowflake
-        run: |
-          uv run dbt test -t ci --select tag:staging tag:intermediate
-        env:
-          DBT_PROFILES_DIR: ../../.dbt
-          SNOWFLAKE_ACCOUNT: ${{ vars.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_DATABASE: ${{ vars.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_ROLE: ${{ vars.SNOWFLAKE_ROLE }}
-          SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
-          SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
-          SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
+        run: uv run dbt test -t ci 
 
       - name: Upload dbt artifacts
         if: always()

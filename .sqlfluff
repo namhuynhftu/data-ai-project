@@ -52,12 +52,8 @@ group_by_and_order_by_style = implicit
 # dbt templater configuration
 [sqlfluff:templater:dbt]
 project_dir = ./dwh/snowflake
-profiles_dir = C:\Users\kamikaze\.dbt
+profiles_dir = .dbt
 # profile = dbt_sf
-target = dev
+# target = dev
 dbt_skip_compilation_error = True
 dbt_skip_connection_error = True
-
-# Enable dbt builtins for Jinja templater
-[sqlfluff:templater:jinja]
-apply_dbt_builtins = True

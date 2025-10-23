@@ -7,6 +7,8 @@ __pycache__/
 
 # Environment variables
 .env
+.secrets
+.vars
 
 # Logs
 *.log   
@@ -33,14 +35,13 @@ venv/
 .DS_Store
 
 # Ignore dbt profile
-./dbt/profiles.yml
-profiles.yml
+# profiles.yml
 
 # Mysql dump files
 *.sock
 data/database/mysql_data/mysql.sock
 LEARN/
-
+data_temp/
 # Other MySQL runtime files
 *.pid
 *.err
