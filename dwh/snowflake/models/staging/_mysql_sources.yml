@@ -102,7 +102,11 @@ sources:
             description: "Review comment message written by customer"
           - name: review_creation_date
             description: "Review creation date"
+            tests:
+              - not_null
           - name: review_answer_timestamp
+            tests:
+              - not_null
             description: "Review answer timestamp"
 
       - name: olist_orders_dataset
