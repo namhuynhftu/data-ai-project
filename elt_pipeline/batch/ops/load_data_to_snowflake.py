@@ -149,7 +149,11 @@ def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stag
                 copy_sql = f"""
                 COPY INTO {database}.{schema}.{snowflake_target_table.upper()}
                 FROM @{stage_name}/{table_subfolder}/{internal_snowflake_path}
-                FILE_FORMAT = (TYPE = 'PARQUET')
+                FILE_FORMAT = (
+                    TYPE = 'PARQUET'
+                    USE_LOGICAL_TYPE = TRUE
+                    BINARY_AS_TEXT = FALSE
+                )
                 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
                 ON_ERROR = 'CONTINUE'
                 """
@@ -292,7 +296,11 @@ def _load_temp_file_to_snowflake_stage(temp_file_path: Path, table_name: str, lo
         stage_name = "MINIO_STAGE_SHARED"
         create_stage_sql = f"""
         CREATE STAGE IF NOT EXISTS {os.getenv("SNOWFLAKE_DATABASE")}.{os.getenv("SNOWFLAKE_SCHEMA")}.{stage_name}
-        FILE_FORMAT = (TYPE = 'PARQUET')
+        FILE_FORMAT = (
+            TYPE = 'PARQUET'
+            USE_LOGICAL_TYPE = TRUE
+            BINARY_AS_TEXT = FALSE
+        )
         COMMENT = 'Shared internal staging area for all tables'
         """
         cursor.execute(create_stage_sql)
