@@ -1,3 +1,10 @@
+{{
+    config(
+        materialized='view',
+        tags=['intermediate']
+    )
+}}
+
 with joined as (
     select
         oi.order_id,

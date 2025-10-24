@@ -193,7 +193,7 @@ def main():
             "num_users": 50,
             "num_transactions": 150, 
             "num_detailed_transactions": 300,
-            "chunk_size": 25
+            "chunk_size": 1
         }
         
         logger.info("📋 Pipeline Configuration:")

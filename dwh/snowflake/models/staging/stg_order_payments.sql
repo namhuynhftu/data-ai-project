@@ -1,3 +1,10 @@
+{{
+    config(
+        materialized='view',
+        tags=['staging']
+    )
+}}
+
 with source as (
     select * from {{ source('raw_data', 'olist_order_payments_dataset') }}
 ),

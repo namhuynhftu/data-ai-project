@@ -19,15 +19,15 @@ with source_data as (
         geo_state,
         -- SCD Type 2 fields
         {{ dbt.current_timestamp() }} as effective_date,
-        cast('9999-12-31' as timestamp) as end_date,
+        convert_timezone('UTC', '9999-12-31 00:00:00') as end_date,
         true as is_current,
         -- Hash for change detection
-        {{ dbt.hash(dbt.concat([
+        {{ dbt_utils.generate_surrogate_key([
             'customer_city',
             'customer_state',
             'geo_city',
             'geo_state'
-        ])) }} as row_hash
+        ]) }} as row_hash
     from {{ ref('int_customers_geocoded') }}
 )
 
@@ -41,9 +41,7 @@ with source_data as (
 
 , changed_records as (
     select
-        s.*,
-        e.customer_key as existing_key,
-        e.row_hash as existing_hash
+        s.*
     from source_data s
     left join existing_records e
         on s.customer_id = e.customer_id
@@ -76,20 +74,20 @@ with source_data as (
     select * from expired_records
 )
 
-select
-    customer_key,
-    customer_id,
-    customer_unique_id,
-    customer_zip_code_prefix,
-    customer_city,
-    customer_state,
-    geo_city,
-    geo_state,
-    effective_date,
-    end_date,
-    is_current,
-    row_hash
-from final
+    select
+        customer_key,
+        customer_id,
+        customer_unique_id,
+        customer_zip_code_prefix,
+        customer_city,
+        customer_state,
+        geo_city,
+        geo_state,
+        effective_date,
+        end_date,
+        is_current,
+        row_hash
+    from final
 
 {% else %}
 
@@ -103,8 +101,8 @@ from final
         customer_state,
         geo_city,
         geo_state,
-        effective_date,
-        end_date,
+        {{ dbt.current_timestamp() }} as effective_date,
+        convert_timezone('UTC', '9999-12-31 00:00:00') as end_date,
         is_current,
         row_hash
     from source_data
