@@ -1,3 +1,10 @@
+{{
+    config(
+        materialized='view',
+        tags=['intermediate']
+    )
+}}
+
 with cleaned as (
     select
         order_id,

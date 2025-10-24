@@ -1,3 +1,11 @@
+{{
+    config(
+        materialized='table',
+        cluster_by=['seller_state', 'seller_city'],
+        tags=['dimension', 'core']
+    )
+}}
+
 select
     {{ dbt_utils.generate_surrogate_key(['seller_id']) }} as seller_key,
     seller_id,

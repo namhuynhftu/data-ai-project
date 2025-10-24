@@ -1,3 +1,11 @@
+{{
+    config(
+        materialized='table',
+        cluster_by=['product_category_name'],
+        tags=['dimension', 'core']
+    )
+}}
+
 select
     {{ dbt_utils.generate_surrogate_key(['product_id']) }} as product_key,
     product_id,

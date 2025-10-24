@@ -8,6 +8,8 @@ models:
       **Business Purpose:** Central reference for all customer analytics and segmentation.
       
       **Grain:** One row per unique customer
+      
+      **SCD Type:** Type 1 (current state only)
     meta:
       owner: "Data Engineering Team"
       layer: "mart"
@@ -35,6 +37,193 @@ models:
         description: "Geocoded city name from geolocation lookup"
       - name: geo_state
         description: "Geocoded state from geolocation lookup"
+
+  - name: dim_customer_scd2
+    description: >
+      **Customer dimension table with SCD Type 2** tracking historical changes to customer attributes.
+      
+      **Business Purpose:** Track customer location changes over time for historical analysis.
+      
+      **Grain:** One row per customer per change (historical tracking)
+      
+      **SCD Type:** Type 2 (full history with effective_date/end_date)
+      
+      **Usage:** Join on customer_id and fact date BETWEEN effective_date AND end_date
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+    columns:
+      - name: customer_key
+        description: "Surrogate key for customer dimension"
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Natural key - Unique customer identifier (multiple rows possible)"
+        data_tests:
+          - not_null
+      - name: customer_unique_id
+        description: "Universal customer identifier across platforms"
+      - name: customer_zip_code_prefix
+        description: "Customer zip code prefix at this point in time"
+      - name: customer_city
+        description: "Customer city at this point in time"
+      - name: customer_state
+        description: "Customer state at this point in time"
+      - name: geo_city
+        description: "Geocoded city at this point in time"
+      - name: geo_state
+        description: "Geocoded state at this point in time"
+      - name: effective_date
+        description: "Start date when this version became effective"
+        data_tests:
+          - not_null
+      - name: end_date
+        description: "End date when this version expired"
+        data_tests:
+          - not_null
+      - name: is_current
+        description: "Boolean flag indicating current/active record"
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      - name: row_hash
+        description: "Hash of tracked columns for change detection"
+        data_tests:
+          - not_null
+
+  - name: dim_seller
+    description: >
+      **Seller dimension table** containing seller/merchant information with geographic data.
+      
+      **Business Purpose:** Seller performance analysis and geographic distribution.
+      
+      **Grain:** One row per unique seller
+      
+      **SCD Type:** Type 1 (current state only)
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+
+  - name: dim_seller_scd2
+    description: >
+      **Seller dimension table with SCD Type 2** tracking historical changes to seller attributes.
+      
+      **Business Purpose:** Track seller location changes over time for marketplace analysis.
+      
+      **Grain:** One row per seller per change (historical tracking)
+      
+      **SCD Type:** Type 2 (full history with effective_date/end_date)
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+    columns:
+      - name: seller_key
+        description: "Surrogate key for seller dimension"
+        data_tests:
+          - unique
+          - not_null
+      - name: seller_id
+        description: "Natural key - Unique seller identifier"
+        data_tests:
+          - not_null
+      - name: seller_zip_code_prefix
+        description: "Seller zip code at this point in time"
+      - name: seller_city
+        description: "Seller city at this point in time"
+      - name: seller_state
+        description: "Seller state at this point in time"
+      - name: geo_city
+        description: "Geocoded city at this point in time"
+      - name: geo_state
+        description: "Geocoded state at this point in time"
+      - name: effective_date
+        description: "Start date when this version became effective"
+        data_tests:
+          - not_null
+      - name: end_date
+        description: "End date when this version expired"
+        data_tests:
+          - not_null
+      - name: is_current
+        description: "Boolean flag indicating current/active record"
+        data_tests:
+          - not_null
+      - name: row_hash
+        description: "Hash of tracked columns for change detection"
+        data_tests:
+          - not_null
+
+  - name: dim_product
+    description: >
+      **Product dimension table** containing product master data with category translations.
+      
+      **Business Purpose:** Product performance analysis and category insights.
+      
+      **Grain:** One row per unique product
+      
+      **SCD Type:** Type 1 (current state only)
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+
+  - name: dim_product_scd2
+    description: >
+      **Product dimension table with SCD Type 2** tracking historical changes to product attributes.
+      
+      **Business Purpose:** Track product category changes, photo updates, and dimension changes over time.
+      
+      **Grain:** One row per product per change (historical tracking)
+      
+      **SCD Type:** Type 2 (full history with effective_date/end_date)
+    meta:
+      owner: "Data Engineering Team"
+      layer: "mart"
+      criticality: "high"
+    columns:
+      - name: product_key
+        description: "Surrogate key for product dimension"
+        data_tests:
+          - unique
+          - not_null
+      - name: product_id
+        description: "Natural key - Unique product identifier"
+        data_tests:
+          - not_null
+      - name: product_category_name
+        description: "Product category at this point in time"
+      - name: product_name_length
+        description: "Product name length at this point in time"
+      - name: product_description_length
+        description: "Product description length at this point in time"
+      - name: product_photos_qty
+        description: "Product photo quantity at this point in time"
+      - name: product_volume_cm3
+        description: "Product volume at this point in time"
+      - name: product_weight_kg
+        description: "Product weight at this point in time"
+      - name: photo_category
+        description: "Photo category classification at this point in time"
+      - name: effective_date
+        description: "Start date when this version became effective"
+        data_tests:
+          - not_null
+      - name: end_date
+        description: "End date when this version expired"
+        data_tests:
+          - not_null
+      - name: is_current
+        description: "Boolean flag indicating current/active record"
+        data_tests:
+          - not_null
+      - name: row_hash
+        description: "Hash of tracked columns for change detection"
+        data_tests:
+          - not_null
 
   - name: dim_date
     description: >
@@ -66,29 +255,6 @@ models:
       **Business Purpose:** Payment method analysis and trends.
       
       **Grain:** One row per payment type
-    meta:
-      owner: "Data Engineering Team"
-      layer: "mart"
-
-  - name: dim_product
-    description: >
-      **Product dimension table** containing product master data with category translations.
-      
-      **Business Purpose:** Product performance analysis and category insights.
-      
-      **Grain:** One row per unique product
-    meta:
-      owner: "Data Engineering Team"
-      layer: "mart"
-      criticality: "high"
-
-  - name: dim_seller
-    description: >
-      **Seller dimension table** containing seller/merchant information with geographic data.
-      
-      **Business Purpose:** Seller performance analysis and geographic distribution.
-      
-      **Grain:** One row per unique seller
     meta:
       owner: "Data Engineering Team"
       layer: "mart"
