@@ -21,10 +21,10 @@ with order_items as (
         dc.customer_state,
         ds.seller_state,
         dp.product_category_name
-    from {{ ref('fact_order_items') }} fi
-    inner join {{ ref('dim_customer') }} dc on fi.customer_key = dc.customer_key
-    inner join {{ ref('dim_seller') }} ds on fi.seller_key = ds.seller_key
-    inner join {{ ref('dim_product') }} dp on fi.product_key = dp.product_key
+    from {{ ref('fact_order_items') }} as fi
+    inner join {{ ref('dim_customer') }} as dc on fi.customer_key = dc.customer_key
+    inner join {{ ref('dim_seller') }} as ds on fi.seller_key = ds.seller_key
+    inner join {{ ref('dim_product') }} as dp on fi.product_key = dp.product_key
 ),
 
 orders as (
@@ -51,32 +51,34 @@ select
     oi.customer_state,
     oi.seller_state,
     oi.product_category_name,
-    
+
     -- Volume Metrics
     count(distinct o.order_id) as total_orders,
     count(distinct oi.customer_key) as unique_customers,
     count(distinct oi.seller_key) as unique_sellers,
     count(*) as total_items_sold,
-    
+
     -- Revenue Metrics
     sum(oi.price) as gross_merchandise_value,
     sum(oi.freight_value) as total_freight_revenue,
     sum(oi.total_item_value) as total_revenue,
     avg(oi.price) as avg_item_price,
     avg(oi.total_item_value) as avg_order_value,
-    
+
     -- Operational Metrics
     avg(o.purchase_to_approve_days) as avg_approval_time_days,
     avg(o.ship_to_deliver_days) as avg_delivery_time_days,
     sum(o.on_time_flag) / count(o.order_id) as on_time_delivery_rate,
-    
+
     -- Customer Satisfaction Metrics
     avg(r.review_score) as avg_review_score,
     count(case when r.review_score >= 4 then 1 end) / count(r.review_score) as positive_review_rate
-    
-from order_items oi
-inner join orders o on oi.customer_key = {{ dbt_utils.generate_surrogate_key(['o.customer_id']) }}
-    and oi.purchase_date = o.purchase_date
-left join reviews r on o.order_id = r.order_id
+
+from order_items as oi
+inner join orders as o
+    on
+        oi.customer_key = {{ dbt_utils.generate_surrogate_key(['o.customer_id']) }}
+        and oi.purchase_date = o.purchase_date
+left join reviews as r on o.order_id = r.order_id
 
 group by 1, 2, 3, 4

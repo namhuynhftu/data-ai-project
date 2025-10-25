@@ -27,12 +27,13 @@ with source_data as (
 
     {% if is_incremental() %}
         -- Incremental logic: only process orders modified since last run
-        where purchase_date > (select max(purchase_date) from {{ this }})
-           or order_id in (
-               select order_id 
-               from {{ ref('int_orders_lifecycle') }} 
-               where purchase_date >= dateadd('day', -7, current_date())
-           )
+        where
+            purchase_date > (select max(purchase_date) from {{ this }})
+            or order_id in (
+                select order_id
+                from {{ ref('int_orders_lifecycle') }}
+                where purchase_date >= dateadd('day', -7, current_date())
+            )
     {% endif %}
 )
 
