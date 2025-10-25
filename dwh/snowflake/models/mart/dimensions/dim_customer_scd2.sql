@@ -29,50 +29,50 @@ with source_data as (
             'geo_state'
         ]) }} as row_hash
     from {{ ref('int_customers_geocoded') }}
-)
+),
 
 {% if is_incremental() %}
 
 -- Handle SCD Type 2 logic
-, existing_records as (
-    select * from {{ this }}
-    where is_current = true
-)
+    existing_records as (
+        select * from {{ this }}
+        where is_current = true
+    ),
 
-, changed_records as (
-    select
-        s.*
-    from source_data s
-    left join existing_records e
-        on s.customer_id = e.customer_id
-    where e.row_hash is null  -- New record
-       or s.row_hash != e.row_hash  -- Changed record
-)
+    changed_records as (
+        select s.*
+        from source_data as s
+        left join existing_records as e
+            on s.customer_id = e.customer_id
+        where
+            e.row_hash is null  -- New record
+            or s.row_hash != e.row_hash  -- Changed record
+    ),
 
-, expired_records as (
-    select
-        e.customer_key,
-        e.customer_id,
-        e.customer_unique_id,
-        e.customer_zip_code_prefix,
-        e.customer_city,
-        e.customer_state,
-        e.geo_city,
-        e.geo_state,
-        e.effective_date,
-        {{ dbt.current_timestamp() }} as end_date,
-        false as is_current,
-        e.row_hash
-    from existing_records e
-    inner join changed_records c
-        on e.customer_id = c.customer_id
-)
+    expired_records as (
+        select
+            e.customer_key,
+            e.customer_id,
+            e.customer_unique_id,
+            e.customer_zip_code_prefix,
+            e.customer_city,
+            e.customer_state,
+            e.geo_city,
+            e.geo_state,
+            e.effective_date,
+            {{ dbt.current_timestamp() }} as end_date,
+            false as is_current,
+            e.row_hash
+        from existing_records as e
+        inner join changed_records as c
+            on e.customer_id = c.customer_id
+    ),
 
-, final as (
-    select * from changed_records
-    union all
-    select * from expired_records
-)
+    final as (
+        select * from changed_records
+        union all
+        select * from expired_records
+    )
 
     select
         customer_key,
