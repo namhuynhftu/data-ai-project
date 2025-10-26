@@ -14,27 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     environment: SNOWFLAKE
 
-    # ✅ One place for env so you don’t repeat keys per step
     env:
-      DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
       # Vars (non-secret)
-      SNOWFLAKE_ACCOUNT:   ${{ vars.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_DATABASE:  ${{ vars.SNOWFLAKE_DATABASE }}
-      SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
-      SNOWFLAKE_ROLE:      ${{ vars.SNOWFLAKE_ROLE }}
-      SNOWFLAKE_SCHEMA:    ${{ vars.SNOWFLAKE_SCHEMA }}
+      SNOWFLAKE_CI_USER: ${{ vars.SNOWFLAKE_CI_USER }}
+      SNOWFLAKE_CI_DATABASE:  ${{ vars.SNOWFLAKE_CI_DATABASE }}
+      SNOWFLAKE_CI_WAREHOUSE: ${{ vars.SNOWFLAKE_CI_WAREHOUSE }}
+      SNOWFLAKE_CI_ROLE:      ${{ vars.SNOWFLAKE_CI_ROLE }}
+      SNOWFLAKE_CI_SCHEMA:    ${{ vars.SNOWFLAKE_CI_SCHEMA }}
       # Secrets
-      SNOWFLAKE_USER:                  ${{ secrets.SNOWFLAKE_USER }}
-      SNOWFLAKE_PRIVATE_KEY_FILE:      ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}       # full PEM incl. BEGIN/END
-      SNOWFLAKE_PRIVATE_KEY_FILE_PWD:  ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
-      # Where we’ll write the PEM on the runner
-      SNOWFLAKE_PRIVATE_KEY_PATH:      ${{ github.workspace }}/.dbt/key.p8
+      SNOWFLAKE_CI_ACCOUNT:   ${{ secrets.SNOWFLAKE_CI_ACCOUNT }}
+      SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
+      SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
       # Change this to match dbt_project.yml -> profile:
       PROFILE_NAME: snowflake
-
-    defaults:
-      run:
-        working-directory: ./
+      DBT_PROJECT_DIR: ${{ github.workspace }}/dwh/snowflake
+      DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
 
     steps:
       - name: Checkout code
@@ -68,61 +62,23 @@ jobs:
       - name: Verify dbt installation
         run: uv run dbt --version
 
-      # ✅ Create .dbt, write key, generate profiles.yml
-      - name: Prepare .dbt dir and write key
-        shell: bash
-        run: |
-          mkdir -p "$DBT_PROFILES_DIR"
-          if [ -z "${SNOWFLAKE_PRIVATE_KEY_FILE}" ]; then
-            echo "❌ Missing SNOWFLAKE_PRIVATE_KEY_FILE secret" >&2
-            exit 1
-          fi
-          printf '%s\n' "${SNOWFLAKE_PRIVATE_KEY_FILE}" > "$SNOWFLAKE_PRIVATE_KEY_PATH"
-          chmod 600 "$SNOWFLAKE_PRIVATE_KEY_PATH"
-
-      - name: Generate dbt profiles.yml (key-pair auth)
-        run: |
-          cat > "$DBT_PROFILES_DIR/profiles.yml" <<YAML
-          ${PROFILE_NAME}:
-            target: ci
-            outputs:
-              ci:
-                type: snowflake
-                account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-                user: "{{ env_var('SNOWFLAKE_USER') }}"
-                role: "{{ env_var('SNOWFLAKE_ROLE') }}"
-                database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
-                warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
-                schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
-                authenticator: snowflake_jwt
-                private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
-                private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD','') }}"
-                threads: 4
-                client_session_keep_alive: false
-          YAML
-
       - name: Run dbt debug
-        working-directory: ./dwh/snowflake
         run: uv run dbt debug -t ci
 
       - name: Run dbt deps
-        working-directory: ./dwh/snowflake
         run: uv run dbt deps -t ci
 
       - name: Run SQLFluff lint
         run: uv run sqlfluff lint models/ --dialect snowflake --format github-annotation
-        working-directory: ./dwh/snowflake
         env:
           DBT_TARGET: ci
         continue-on-error: true
         
       - name: Run dbt compile
-        working-directory: ./dwh/snowflake
         run: uv run dbt compile -t ci
 
       - name: Run dbt tests
-        working-directory: ./dwh/snowflake
-        run: uv run dbt test -t ci 
+        run: uv run dbt test -t ci
 
       - name: Upload dbt artifacts
         if: always()
