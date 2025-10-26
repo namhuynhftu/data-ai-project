@@ -22,9 +22,9 @@ jobs:
       SNOWFLAKE_CI_ROLE:      ${{ vars.SNOWFLAKE_CI_ROLE }}
       SNOWFLAKE_CI_SCHEMA:    ${{ vars.SNOWFLAKE_CI_SCHEMA }}
       # Secrets
-      SNOWFLAKE_CI_USER:                  ${{ secrets.SNOWFLAKE_CI_USER }}
-      SNOWFLAKE_PRIVATE_KEY:           ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
-      SNOWFLAKE_PRIVATE_KEY_PASSPHRASE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
+      SNOWFLAKE_CI_USER: ${{ secrets.SNOWFLAKE_CI_USER }}
+      SNOWFLAKE_PRIVATE_KEY_FILE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
+      SNOWFLAKE_PRIVATE_KEY_FILE_PWD: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
       # Change this to match dbt_project.yml -> profile:
       PROFILE_NAME: snowflake
       DBT_PROJECT_DIR: ${{ github.workspace }}/dwh/snowflake
