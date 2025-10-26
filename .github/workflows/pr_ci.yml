@@ -14,9 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: SNOWFLAKE
 
-    # ✅ One place for env so you don’t repeat keys per step
     env:
-      DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
       # Vars (non-secret)
       SNOWFLAKE_ACCOUNT:   ${{ vars.SNOWFLAKE_ACCOUNT }}
       SNOWFLAKE_DATABASE:  ${{ vars.SNOWFLAKE_DATABASE }}
@@ -25,10 +23,8 @@ jobs:
       SNOWFLAKE_SCHEMA:    ${{ vars.SNOWFLAKE_SCHEMA }}
       # Secrets
       SNOWFLAKE_USER:                  ${{ secrets.SNOWFLAKE_USER }}
-      SNOWFLAKE_PRIVATE_KEY_FILE:      ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}       # full PEM incl. BEGIN/END
-      SNOWFLAKE_PRIVATE_KEY_FILE_PWD:  ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
-      # Where we’ll write the PEM on the runner
-      SNOWFLAKE_PRIVATE_KEY_PATH:      ${{ github.workspace }}/.dbt/key.p8
+      SNOWFLAKE_PRIVATE_KEY:           ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
+      SNOWFLAKE_PRIVATE_KEY_PASSPHRASE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
       # Change this to match dbt_project.yml -> profile:
       PROFILE_NAME: snowflake
 
@@ -67,39 +63,6 @@ jobs:
 
       - name: Verify dbt installation
         run: uv run dbt --version
-
-      # ✅ Create .dbt, write key, generate profiles.yml
-      - name: Prepare .dbt dir and write key
-        shell: bash
-        run: |
-          mkdir -p "$DBT_PROFILES_DIR"
-          if [ -z "${SNOWFLAKE_PRIVATE_KEY_FILE}" ]; then
-            echo "❌ Missing SNOWFLAKE_PRIVATE_KEY_FILE secret" >&2
-            exit 1
-          fi
-          printf '%s\n' "${SNOWFLAKE_PRIVATE_KEY_FILE}" > "$SNOWFLAKE_PRIVATE_KEY_PATH"
-          chmod 600 "$SNOWFLAKE_PRIVATE_KEY_PATH"
-
-      - name: Generate dbt profiles.yml (key-pair auth)
-        run: |
-          cat > "$DBT_PROFILES_DIR/profiles.yml" <<YAML
-          ${PROFILE_NAME}:
-            target: ci
-            outputs:
-              ci:
-                type: snowflake
-                account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-                user: "{{ env_var('SNOWFLAKE_USER') }}"
-                role: "{{ env_var('SNOWFLAKE_ROLE') }}"
-                database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
-                warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
-                schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
-                authenticator: snowflake_jwt
-                private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
-                private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD','') }}"
-                threads: 4
-                client_session_keep_alive: false
-          YAML
 
       - name: Run dbt debug
         working-directory: ./dwh/snowflake
