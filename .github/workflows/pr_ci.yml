@@ -16,21 +16,19 @@ jobs:
 
     env:
       # Vars (non-secret)
-      SNOWFLAKE_ACCOUNT:   ${{ vars.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_DATABASE:  ${{ vars.SNOWFLAKE_DATABASE }}
-      SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
-      SNOWFLAKE_ROLE:      ${{ vars.SNOWFLAKE_ROLE }}
-      SNOWFLAKE_SCHEMA:    ${{ vars.SNOWFLAKE_SCHEMA }}
+      SNOWFLAKE_CI_ACCOUNT:   ${{ vars.SNOWFLAKE_CI_ACCOUNT }}
+      SNOWFLAKE_CI_DATABASE:  ${{ vars.SNOWFLAKE_CI_DATABASE }}
+      SNOWFLAKE_CI_WAREHOUSE: ${{ vars.SNOWFLAKE_CI_WAREHOUSE }}
+      SNOWFLAKE_CI_ROLE:      ${{ vars.SNOWFLAKE_CI_ROLE }}
+      SNOWFLAKE_CI_SCHEMA:    ${{ vars.SNOWFLAKE_CI_SCHEMA }}
       # Secrets
-      SNOWFLAKE_USER:                  ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CI_USER:                  ${{ secrets.SNOWFLAKE_CI_USER }}
       SNOWFLAKE_PRIVATE_KEY:           ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE }}
       SNOWFLAKE_PRIVATE_KEY_PASSPHRASE: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_FILE_PWD }}
       # Change this to match dbt_project.yml -> profile:
       PROFILE_NAME: snowflake
-
-    defaults:
-      run:
-        working-directory: ./
+      DBT_PROJECT_DIR: ${{ github.workspace }}/dwh/snowflake
+      DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
 
     steps:
       - name: Checkout code
@@ -65,27 +63,22 @@ jobs:
         run: uv run dbt --version
 
       - name: Run dbt debug
-        working-directory: ./dwh/snowflake
         run: uv run dbt debug -t ci
 
       - name: Run dbt deps
-        working-directory: ./dwh/snowflake
         run: uv run dbt deps -t ci
 
       - name: Run SQLFluff lint
         run: uv run sqlfluff lint models/ --dialect snowflake --format github-annotation
-        working-directory: ./dwh/snowflake
         env:
           DBT_TARGET: ci
         continue-on-error: true
         
       - name: Run dbt compile
-        working-directory: ./dwh/snowflake
         run: uv run dbt compile -t ci
 
       - name: Run dbt tests
-        working-directory: ./dwh/snowflake
-        run: uv run dbt test -t ci 
+        run: uv run dbt test -t ci
 
       - name: Upload dbt artifacts
         if: always()
