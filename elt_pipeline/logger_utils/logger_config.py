@@ -385,7 +385,7 @@ class ELTPipelineLogger:
     
     def log_operation_end(self, operation: str, success: bool = True, **kwargs):
         """Log the end of an operation."""
-        status = "✅ Completed" if success else "❌ Failed"
+        status = "✅ Completed" if success else "Failed"
         self.info(f"{status}: {operation}", operation_status="end", success=success, **kwargs)
     
     def log_pipeline_summary(self):
@@ -631,7 +631,7 @@ def configure_logging(
     
     # Log configuration change
     logger = get_logger("elt_pipeline.logger_utils.logger_config")
-    logger.info("🔧 Global logging configuration updated",
+    logger.info("Global logging configuration updated",
                environment=environment or os.getenv("ENVIRONMENT", "development"),
                log_level=log_level or os.getenv("LOG_LEVEL", "INFO"),
                structured_logging=structured_logging,
