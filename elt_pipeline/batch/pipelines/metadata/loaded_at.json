@@ -3,20 +3,20 @@
   "last_updated": "2025-10-27T17:17:06.139690",
   "tables": {
     "olist_order_items_dataset": {
-      "load_from": "2025-10-27 16:56:12",
-      "load_at": "2025-10-27 17:16:10",
+      "load_from": null,
+      "load_at": "2018-01-01 00:00:00",
       "watermark_column": "shipping_limit_date",
       "strategy": "incremental_by_watermark"
     },
     "olist_order_reviews_dataset": {
-      "load_from": "2025-10-27 16:56:13",
-      "load_at": "2025-10-27 17:16:10",
+      "load_from": null,
+      "load_at": "2018-01-01 00:00:00",
       "watermark_column": "review_creation_date",
       "strategy": "incremental_by_watermark"
     },
     "olist_orders_dataset": {
-      "load_from": "2025-10-27 16:56:13",
-      "load_at": "2025-10-27 17:16:11",
+      "load_from": null,
+      "load_at": "2018-01-01 00:00:00",
       "watermark_column": "order_purchase_timestamp",
       "strategy": "incremental_by_watermark"
     }
