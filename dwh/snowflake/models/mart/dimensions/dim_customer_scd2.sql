@@ -3,7 +3,7 @@
         materialized='incremental',
         unique_key='customer_key',
         on_schema_change='sync_all_columns',
-        tags=['dimension', 'scd2']
+        tags=['dimension', 'scd2', 'incremental']
     )
 }}
 
@@ -17,11 +17,9 @@ with source_data as (
         customer_state,
         geo_city,
         geo_state,
-        -- SCD Type 2 fields
         {{ dbt.current_timestamp() }} as effective_date,
         convert_timezone('UTC', '9999-12-31 00:00:00') as end_date,
         true as is_current,
-        -- Hash for change detection
         {{ dbt_utils.generate_surrogate_key([
             'customer_city',
             'customer_state',
@@ -91,20 +89,19 @@ with source_data as (
 
 {% else %}
 
--- Initial load
-    select
-        customer_key,
-        customer_id,
-        customer_unique_id,
-        customer_zip_code_prefix,
-        customer_city,
-        customer_state,
-        geo_city,
-        geo_state,
-        {{ dbt.current_timestamp() }} as effective_date,
-        convert_timezone('UTC', '9999-12-31 00:00:00') as end_date,
-        is_current,
-        row_hash
-    from source_data
+select
+    customer_key,
+    customer_id,
+    customer_unique_id,
+    customer_zip_code_prefix,
+    customer_city,
+    customer_state,
+    geo_city,
+    geo_state,
+    effective_date,
+    end_date,
+    is_current,
+    row_hash
+from source_data
 
 {% endif %}

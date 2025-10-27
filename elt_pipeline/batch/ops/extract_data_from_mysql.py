@@ -9,6 +9,7 @@ import pandas as pd
 load_dotenv()
 
 from elt_pipeline.batch.utils.mysql_loader import MySQLLoader
+from elt_pipeline.batch.utils.loaded_at_tracker import get_table_loaded_at, get_incremental_query_filter
 from elt_pipeline.logger_utils import get_mysql_logger, BatchOperation
 
 # Setup centralized logging
@@ -79,24 +80,42 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
         FROM {table_config.get("source_table")}
         WHERE 1=1
     """
+        
         # Choose extract strategy 
-        loaded_at = table_config.get("loaded_at", "1970-01-01 00:00:00")
         strategy = table_config.get("strategy", "full_load")
+        loaded_at = None
+        new_watermark = None
+        is_first_incremental_load = False
         
         if strategy == "incremental_by_watermark":
-            if loaded_at is None: 
-                logger.info("Incremental load for first time, performing full load",
-                           table=table_name, strategy=strategy)
-                watermark_column = table_config.get("watermark_column")
-                if watermark_column:
-                    watermark_value = mysql_loader.get_watermark(table_config.get("source_table"), watermark_column)
-                loaded_at = watermark_value if watermark_value is not None else "1970-01-01 00:00:00"
+            # Get load_from and load_at from loaded_at.json
+            load_from, load_at = get_incremental_query_filter(table_name)
+            watermark_column = table_config.get("watermark_column")
+            
+            if load_from is None:
+                # First incremental load: load data from beginning up to load_at
+                is_first_incremental_load = True
+                logger.info("First incremental load: loading from beginning to load_at",
+                           table=table_name, 
+                           strategy=strategy,
+                           load_at=load_at)
+                if watermark_column and load_at:
+                    sql += f" AND {watermark_column} <= '{load_at}'"
+                    loaded_at = load_at
+                    # Set new_watermark to current timestamp for next load
+                    new_watermark = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             else:
-                logger.info(f"Incremental load since {loaded_at}", 
-                           table=table_name, strategy=strategy, loaded_at=loaded_at)
-                watermark_column = table_config.get("watermark_column")
+                # Subsequent incremental load: load data from load_from to current time
+                current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                logger.info(f"Incremental load from {load_from} to current time", 
+                           table=table_name, 
+                           strategy=strategy, 
+                           load_from=load_from,
+                           load_to=current_timestamp)
                 if watermark_column:
-                    sql += f" AND {watermark_column} > '{loaded_at}'"
+                    sql += f" AND {watermark_column} > '{load_from}'"
+                    loaded_at = load_from
+                    new_watermark = current_timestamp
         elif strategy == "full_load":
             logger.info("Performing full load", table=table_name, strategy=strategy)
 
@@ -117,6 +136,8 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
             "data": pd_data,
             "table_config": table_config,
             "loaded_at": loaded_at,
+            "new_watermark": new_watermark,  # Pass the new watermark for updating loaded_at.json
+            "is_first_incremental_load": is_first_incremental_load,  # Flag for truncate behavior
             "minio_target_storage": run_config["minio_target_storage"],
             "snowflake_target_storage": run_config["snowflake_target_storage"]
         }

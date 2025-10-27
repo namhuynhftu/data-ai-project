@@ -47,29 +47,26 @@ reviews as (
 )
 
 select
-    date_trunc('month', oi.purchase_date) as order_month,
     oi.customer_state,
     oi.seller_state,
     oi.product_category_name,
-
+    -- Dimensions
+    date_trunc('month', oi.purchase_date) as order_month,
     -- Volume Metrics
     count(distinct o.order_id) as total_orders,
     count(distinct oi.customer_key) as unique_customers,
     count(distinct oi.seller_key) as unique_sellers,
     count(*) as total_items_sold,
-
     -- Revenue Metrics
     sum(oi.price) as gross_merchandise_value,
     sum(oi.freight_value) as total_freight_revenue,
     sum(oi.total_item_value) as total_revenue,
     avg(oi.price) as avg_item_price,
     avg(oi.total_item_value) as avg_order_value,
-
     -- Operational Metrics
     avg(o.purchase_to_approve_days) as avg_approval_time_days,
     avg(o.ship_to_deliver_days) as avg_delivery_time_days,
     sum(o.on_time_flag) / count(o.order_id) as on_time_delivery_rate,
-
     -- Customer Satisfaction Metrics
     avg(r.review_score) as avg_review_score,
     count(case when r.review_score >= 4 then 1 end) / count(r.review_score) as positive_review_rate

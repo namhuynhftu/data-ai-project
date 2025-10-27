@@ -19,11 +19,9 @@ with source_data as (
         product_volume_cm3,
         product_weight_kg,
         photo_category,
-        -- SCD Type 2 fields
         {{ dbt.current_timestamp() }} as effective_date,
         convert_timezone('UTC', '9999-12-31 00:00:00') as end_date,
         true as is_current,
-        -- Hash for change detection
         {{ dbt_utils.generate_surrogate_key([
             'product_category_name',
             'product_name_length',

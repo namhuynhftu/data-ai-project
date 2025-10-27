@@ -17,11 +17,9 @@ with source_data as (
         seller_state,
         geo_city,
         geo_state,
-        -- SCD Type 2 fields
         {{ dbt.current_timestamp() }} as effective_date,
         convert_timezone('UTC', '9999-12-31 00:00:00') as end_date,
         true as is_current,
-        -- Hash for change detection
         {{ dbt_utils.generate_surrogate_key([
             'seller_city',
             'seller_state',
@@ -116,7 +114,6 @@ with source_data as (
 
 {% else %}
 
--- Initial load
 select
     seller_key,
     seller_id,
@@ -126,7 +123,7 @@ select
     geo_city,
     geo_state,
     effective_date,
-    convert_timezone('UTC', '9999-12-31 00:00:00') as end_date,
+    end_date,
     is_current,
     row_hash
 from source_data
