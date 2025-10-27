@@ -1,5 +1,5 @@
 snowflake:
-  target: dev
+  target: ci
   outputs:
     ci:
       type: snowflake
