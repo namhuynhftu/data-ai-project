@@ -1,0 +1,141 @@
+version: 2
+
+snapshots:
+  - name: snap_dim_customer
+    description: >
+      SCD Type 2 snapshot for customer dimension tracking historical changes in customer location attributes.
+      This snapshot captures changes in customer city, state, and geocoded location information over time.
+      Uses check strategy to monitor specific columns for changes.
+    config:
+      target_schema: snapshots
+      unique_key: customer_id
+      strategy: check
+      check_cols:
+        - customer_city
+        - customer_state
+        - geo_city
+        - geo_state
+      invalidate_hard_deletes: true
+    columns:
+      - name: customer_id
+        description: Unique identifier for the customer (natural key)
+        tests:
+          - not_null
+          # - unique
+      - name: customer_unique_id
+        description: Unique identifier across the entire customer base
+      - name: customer_zip_code_prefix
+        description: First 5 digits of customer zip code
+      - name: customer_city
+        description: Customer city name (tracked for changes)
+      - name: customer_state
+        description: Customer state abbreviation (tracked for changes)
+      - name: geo_lat
+        description: Geocoded latitude for customer location
+      - name: geo_lng
+        description: Geocoded longitude for customer location
+      - name: geo_city
+        description: Geocoded city name (tracked for changes)
+      - name: geo_state
+        description: Geocoded state abbreviation (tracked for changes)
+      - name: dbt_valid_from
+        description: Timestamp when this record version became valid
+      - name: dbt_valid_to
+        description: Timestamp when this record version became invalid (null for current version)
+      - name: dbt_updated_at
+        description: Timestamp when this snapshot record was last updated
+
+  - name: snap_dim_seller
+    description: >
+      SCD Type 2 snapshot for seller dimension tracking historical changes in seller location attributes.
+      This snapshot captures changes in seller city, state, and geocoded location information over time.
+      Uses check strategy to monitor specific columns for changes.
+    config:
+      target_schema: snapshots
+      unique_key: seller_id
+      strategy: check
+      check_cols:
+        - seller_city
+        - seller_state
+        - geo_city
+        - geo_state
+      invalidate_hard_deletes: true
+    columns:
+      - name: seller_id
+        description: Unique identifier for the seller (natural key)
+        tests:
+          - not_null
+          # - unique
+      - name: seller_zip_code_prefix
+        description: First 5 digits of seller zip code
+      - name: seller_city
+        description: Seller city name (tracked for changes)
+      - name: seller_state
+        description: Seller state abbreviation (tracked for changes)
+      - name: geo_lat
+        description: Geocoded latitude for seller location
+      - name: geo_lng
+        description: Geocoded longitude for seller location
+      - name: geo_city
+        description: Geocoded city name (tracked for changes)
+      - name: geo_state
+        description: Geocoded state abbreviation (tracked for changes)
+      - name: dbt_valid_from
+        description: Timestamp when this record version became valid
+      - name: dbt_valid_to
+        description: Timestamp when this record version became invalid (null for current version)
+      - name: dbt_updated_at
+        description: Timestamp when this snapshot record was last updated
+
+  - name: snap_dim_product
+    description: >
+      SCD Type 2 snapshot for product dimension tracking historical changes in product attributes.
+      This snapshot captures changes in product category, dimensions, photos, weight, and volume over time.
+      Uses check strategy to monitor specific columns for changes.
+    config:
+      target_schema: snapshots
+      unique_key: product_id
+      strategy: check
+      check_cols:
+        - product_category_name_english
+        - product_name_length
+        - product_description_length
+        - product_photos_qty
+        - product_weight_g
+        - product_length_cm
+        - product_height_cm
+        - product_width_cm
+        - product_volume_cm3
+      invalidate_hard_deletes: true
+    columns:
+      - name: product_id
+        description: Unique identifier for the product (natural key)
+        tests:
+          - not_null
+          # - unique
+      - name: product_category_name
+        description: Original product category name in Portuguese
+      - name: product_category_name_english
+        description: Translated product category name in English (tracked for changes)
+      - name: product_name_length
+        description: Length of product name in characters (tracked for changes)
+      - name: product_description_length
+        description: Length of product description in characters (tracked for changes)
+      - name: product_photos_qty
+        description: Number of product photos (tracked for changes)
+      - name: product_weight_g
+        description: Product weight in grams (tracked for changes)
+      - name: product_length_cm
+        description: Product length in centimeters (tracked for changes)
+      - name: product_height_cm
+        description: Product height in centimeters (tracked for changes)
+      - name: product_width_cm
+        description: Product width in centimeters (tracked for changes)
+      - name: product_volume_cm3
+        description: Calculated product volume in cubic centimeters (tracked for changes)
+      - name: dbt_valid_from
+        description: Timestamp when this record version became valid
+      - name: dbt_valid_to
+        description: Timestamp when this record version became invalid (null for current version)
+      - name: dbt_updated_at
+        description: Timestamp when this snapshot record was last updated

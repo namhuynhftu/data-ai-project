@@ -22,38 +22,54 @@ PIPELINE_CONFIG = {
 def get_strategy_filter():
     """
     Prompt user to select which tables to process based on load strategy.
-    Returns: 'all', 'full_load', or 'incremental_by_watermark'
+    Returns: 'all', 'all_full_load', 'full_load', or 'incremental_by_watermark'
     """
     print("\n" + "=" * 60)
     print("ETL PIPELINE - TABLE STRATEGY SELECTION")
     print("=" * 60)
     print("Select which tables to process:")
-    print("  1. All tables (both full_load and incremental)")
-    print("  2. Only full_load tables")
-    print("  3. Only incremental_by_watermark tables")
+    print("  1. All tables with their default strategies (full_load and incremental)")
+    print("  2. All tables with FULL_LOAD strategy (override incremental)")
+    print("  3. Only full_load tables")
+    print("  4. Only incremental_by_watermark tables")
     print("=" * 60)
     
     while True:
-        choice = input("Enter your choice (1-3): ").strip()
+        choice = input("Enter your choice (1-4): ").strip()
         
         if choice == "1":
-            print("✓ Selected: All tables\n")
+            print("✓ Selected: All tables with default strategies\n")
             return "all"
         elif choice == "2":
+            print("✓ Selected: All tables with FULL_LOAD strategy\n")
+            return "all_full_load"
+        elif choice == "3":
             print("✓ Selected: Only full_load tables\n")
             return "full_load"
-        elif choice == "3":
+        elif choice == "4":
             print("✓ Selected: Only incremental_by_watermark tables\n")
             return "incremental_by_watermark"
         else:
-            print("✗ Invalid choice. Please enter 1, 2, or 3.\n")
+            print("✗ Invalid choice. Please enter 1, 2, 3, or 4.\n")
 
 def filter_tables_by_strategy(tables, strategy_filter):
     """
     Filter tables based on the selected strategy.
+    For 'all_full_load', returns all tables but overrides their strategy to 'full_load'.
     """
     if strategy_filter == "all":
         return tables
+    
+    if strategy_filter == "all_full_load":
+        # Override all tables to use full_load strategy
+        overridden_tables = []
+        for table in tables:
+            table_copy = table.copy()
+            original_strategy = table_copy.get("strategy", "full_load")
+            table_copy["strategy"] = "full_load"
+            table_copy["original_strategy"] = original_strategy  # Keep track of original
+            overridden_tables.append(table_copy)
+        return overridden_tables
     
     filtered = [table for table in tables if table.get("strategy") == strategy_filter]
     return filtered
@@ -85,10 +101,17 @@ if __name__ == "__main__":
     total_tables = len(filtered_tables)
     ingestion_date = datetime.now().isoformat()
     
-    logger.info("Pipeline loaded", 
-               tables=total_tables,
-               strategy_filter=strategy_filter,
-               ingestion_date=ingestion_date)
+    # Log strategy override if applicable
+    if strategy_filter == "all_full_load":
+        logger.info("Pipeline loaded with FULL_LOAD override for all tables", 
+                   tables=total_tables,
+                   strategy_filter=strategy_filter,
+                   ingestion_date=ingestion_date)
+    else:
+        logger.info("Pipeline loaded", 
+                   tables=total_tables,
+                   strategy_filter=strategy_filter,
+                   ingestion_date=ingestion_date)
     
     # PHASE 1: Extract to MinIO
     logger.info("PHASE 1: Extracting to MinIO")
@@ -159,7 +182,11 @@ if __name__ == "__main__":
                        method=snowflake_result.get("method", "temp_file"))
             
             # Update loaded_at.json for incremental tables after successful load
-            if table_config.get("strategy") == "incremental_by_watermark":
+            # Skip update if strategy was overridden to full_load
+            original_strategy = table_config.get("original_strategy")
+            current_strategy = table_config.get("strategy")
+            
+            if current_strategy == "incremental_by_watermark" and strategy_filter != "all_full_load":
                 new_watermark = result["data"].get("new_watermark")
                 if new_watermark:
                     update_table_loaded_at(table_name, new_watermark)
@@ -171,6 +198,10 @@ if __name__ == "__main__":
                     update_table_loaded_at(table_name)
                     logger.info("Updated loaded_at metadata with current timestamp", 
                                table=table_name)
+            elif original_strategy == "incremental_by_watermark" and strategy_filter == "all_full_load":
+                logger.info("Skipped loaded_at update (strategy overridden to full_load)", 
+                           table=table_name,
+                           original_strategy=original_strategy)
     
     logger.info("PHASE 2 COMPLETED", 
                tables_loaded=len(minio_results))
@@ -185,7 +216,7 @@ if __name__ == "__main__":
     logger.info("ETL PIPELINE COMPLETED SUCCESSFULLY")
     logger.info("=" * 60)
     logger.info("SUMMARY:")
-    logger.info(f"  Strategy Filter: {strategy_filter}")
+    logger.info(f"  Loading Strategy: {strategy_filter}")
     logger.info(f"  Tables Processed: {len(minio_results)}")
     logger.info(f"  Total Records: {total_records_processed:,}")
     logger.info(f"  Duration: {duration:.1f} seconds")

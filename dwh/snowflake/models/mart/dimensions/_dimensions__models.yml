@@ -10,6 +10,8 @@ models:
       **Grain:** One row per unique customer
       
       **SCD Type:** Type 1 (current state only)
+      
+      **Note:** For historical tracking, use snap_dim_customer snapshot in the snapshots schema.
     meta:
       owner: "Data Engineering Team"
       layer: "mart"
@@ -38,62 +40,6 @@ models:
       - name: geo_state
         description: "Geocoded state from geolocation lookup"
 
-  - name: dim_customer_scd2
-    description: >
-      **Customer dimension table with SCD Type 2** tracking historical changes to customer attributes.
-      
-      **Business Purpose:** Track customer location changes over time for historical analysis.
-      
-      **Grain:** One row per customer per change (historical tracking)
-      
-      **SCD Type:** Type 2 (full history with effective_date/end_date)
-      
-      **Usage:** Join on customer_id and fact date BETWEEN effective_date AND end_date
-    meta:
-      owner: "Data Engineering Team"
-      layer: "mart"
-      criticality: "high"
-    columns:
-      - name: customer_key
-        description: "Surrogate key for customer dimension"
-        data_tests:
-          - unique
-          - not_null
-      - name: customer_id
-        description: "Natural key - Unique customer identifier (multiple rows possible)"
-        data_tests:
-          - not_null
-      - name: customer_unique_id
-        description: "Universal customer identifier across platforms"
-      - name: customer_zip_code_prefix
-        description: "Customer zip code prefix at this point in time"
-      - name: customer_city
-        description: "Customer city at this point in time"
-      - name: customer_state
-        description: "Customer state at this point in time"
-      - name: geo_city
-        description: "Geocoded city at this point in time"
-      - name: geo_state
-        description: "Geocoded state at this point in time"
-      - name: effective_date
-        description: "Start date when this version became effective"
-        data_tests:
-          - not_null
-      - name: end_date
-        description: "End date when this version expired"
-        data_tests:
-          - not_null
-      - name: is_current
-        description: "Boolean flag indicating current/active record"
-        data_tests:
-          - not_null
-          - accepted_values:
-              values: [true, false]
-      - name: row_hash
-        description: "Hash of tracked columns for change detection"
-        data_tests:
-          - not_null
-
   - name: dim_seller
     description: >
       **Seller dimension table** containing seller/merchant information with geographic data.
@@ -103,59 +49,33 @@ models:
       **Grain:** One row per unique seller
       
       **SCD Type:** Type 1 (current state only)
+      
+      **Note:** For historical tracking, use snap_dim_seller snapshot in the snapshots schema.
     meta:
       owner: "Data Engineering Team"
       layer: "mart"
-
-  - name: dim_seller_scd2
-    description: >
-      **Seller dimension table with SCD Type 2** tracking historical changes to seller attributes.
-      
-      **Business Purpose:** Track seller location changes over time for marketplace analysis.
-      
-      **Grain:** One row per seller per change (historical tracking)
-      
-      **SCD Type:** Type 2 (full history with effective_date/end_date)
-    meta:
-      owner: "Data Engineering Team"
-      layer: "mart"
-      criticality: "high"
+      criticality: "medium"
     columns:
       - name: seller_key
-        description: "Surrogate key for seller dimension"
+        description: "Surrogate key for seller dimension (generated hash)"
         data_tests:
           - unique
           - not_null
       - name: seller_id
-        description: "Natural key - Unique seller identifier"
+        description: "Natural key - Unique seller identifier from source system"
         data_tests:
+          - unique
           - not_null
       - name: seller_zip_code_prefix
-        description: "Seller zip code at this point in time"
+        description: "Seller zip code prefix (first 5 digits)"
       - name: seller_city
-        description: "Seller city at this point in time"
+        description: "Seller city name"
       - name: seller_state
-        description: "Seller state at this point in time"
+        description: "Seller state abbreviation (2 characters)"
       - name: geo_city
-        description: "Geocoded city at this point in time"
+        description: "Geocoded city name from geolocation lookup"
       - name: geo_state
-        description: "Geocoded state at this point in time"
-      - name: effective_date
-        description: "Start date when this version became effective"
-        data_tests:
-          - not_null
-      - name: end_date
-        description: "End date when this version expired"
-        data_tests:
-          - not_null
-      - name: is_current
-        description: "Boolean flag indicating current/active record"
-        data_tests:
-          - not_null
-      - name: row_hash
-        description: "Hash of tracked columns for change detection"
-        data_tests:
-          - not_null
+        description: "Geocoded state from geolocation lookup"
 
   - name: dim_product
     description: >
@@ -166,64 +86,37 @@ models:
       **Grain:** One row per unique product
       
       **SCD Type:** Type 1 (current state only)
-    meta:
-      owner: "Data Engineering Team"
-      layer: "mart"
-      criticality: "high"
-
-  - name: dim_product_scd2
-    description: >
-      **Product dimension table with SCD Type 2** tracking historical changes to product attributes.
       
-      **Business Purpose:** Track product category changes, photo updates, and dimension changes over time.
-      
-      **Grain:** One row per product per change (historical tracking)
-      
-      **SCD Type:** Type 2 (full history with effective_date/end_date)
+      **Note:** For historical tracking, use snap_dim_product snapshot in the snapshots schema.
     meta:
       owner: "Data Engineering Team"
       layer: "mart"
       criticality: "high"
     columns:
       - name: product_key
-        description: "Surrogate key for product dimension"
+        description: "Surrogate key for product dimension (generated hash)"
         data_tests:
           - unique
           - not_null
       - name: product_id
-        description: "Natural key - Unique product identifier"
+        description: "Natural key - Unique product identifier from source system"
         data_tests:
+          - unique
           - not_null
       - name: product_category_name
-        description: "Product category at this point in time"
+        description: "Product category name (translated to English)"
       - name: product_name_length
-        description: "Product name length at this point in time"
+        description: "Length of product name in characters"
       - name: product_description_length
-        description: "Product description length at this point in time"
+        description: "Length of product description in characters"
       - name: product_photos_qty
-        description: "Product photo quantity at this point in time"
+        description: "Quantity of product photos"
       - name: product_volume_cm3
-        description: "Product volume at this point in time"
+        description: "Product volume in cubic centimeters"
       - name: product_weight_kg
-        description: "Product weight at this point in time"
+        description: "Product weight in kilograms"
       - name: photo_category
-        description: "Photo category classification at this point in time"
-      - name: effective_date
-        description: "Start date when this version became effective"
-        data_tests:
-          - not_null
-      - name: end_date
-        description: "End date when this version expired"
-        data_tests:
-          - not_null
-      - name: is_current
-        description: "Boolean flag indicating current/active record"
-        data_tests:
-          - not_null
-      - name: row_hash
-        description: "Hash of tracked columns for change detection"
-        data_tests:
-          - not_null
+        description: "Photo category classification (few/medium/many)"
 
   - name: dim_date
     description: >

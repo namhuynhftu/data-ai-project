@@ -88,7 +88,7 @@ class StreamingLogger:
     # Streaming-specific logging methods
     def log_stream_start(self, stream_config: Dict[str, Any] = None):
         """Log the start of stream processing."""
-        self.info(f"🚀 Starting stream processing: {self.stream_name}",
+        self.info(f"Starting stream processing: {self.stream_name}",
                  stream_name=self.stream_name,
                  stream_config=stream_config or {},
                  operation_type="stream_start",
@@ -97,7 +97,7 @@ class StreamingLogger:
     def log_event_received(self, event_type: str, event_id: str = None, 
                           source: str = None, **kwargs):
         """Log when an event is received for processing."""
-        self.debug(f"📨 Event received: {event_type}",
+        self.debug(f"Event received: {event_type}",
                   event_type=event_type,
                   event_id=event_id,
                   source=source,
@@ -124,7 +124,7 @@ class StreamingLogger:
             self._update_throughput_metrics()
             self._update_latency_metrics()
             
-            self.debug(f"✅ Event processed: {event_type}",
+            self.debug(f"Event processed: {event_type}",
                       event_type=event_type,
                       event_id=event_id,
                       processing_time_ms=round(processing_time_ms, 2),
@@ -133,7 +133,7 @@ class StreamingLogger:
                       **kwargs)
         else:
             self.stream_metrics["events_failed"] += 1
-            self.error(f"❌ Event processing failed: {event_type}",
+            self.error(f"Event processing failed: {event_type}",
                       event_type=event_type,
                       event_id=event_id,
                       processing_time_ms=round(processing_time_ms, 2),
@@ -162,7 +162,7 @@ class StreamingLogger:
     
     def log_throughput_metrics(self, events_per_second: float, window_size_seconds: int = 60):
         """Log current throughput metrics."""
-        self.info(f"📊 Throughput: {events_per_second:.2f} events/sec",
+        self.info(f"Throughput: {events_per_second:.2f} events/sec",
                  events_per_second=round(events_per_second, 2),
                  window_size_seconds=window_size_seconds,
                  operation_type="throughput_metrics")
@@ -180,18 +180,18 @@ class StreamingLogger:
         if p99_latency_ms is not None:
             latency_data["p99_latency_ms"] = round(p99_latency_ms, 2)
         
-        self.info(f"⏱️ Latency: {avg_latency_ms:.2f}ms avg", **latency_data)
+        self.info(f"Latency: {avg_latency_ms:.2f}ms avg", **latency_data)
     
     def log_connection_status(self, service: str, status: str, details: str = None):
         """Log connection status to external services."""
         if status.lower() in ["connected", "healthy", "active"]:
-            self.info(f"🔗 Connection {status}: {service}",
+            self.info(f"Connection {status}: {service}",
                      service=service,
                      status=status,
                      details=details,
                      operation_type="connection_status")
         else:
-            self.warning(f"⚠️ Connection {status}: {service}",
+            self.warning(f"Connection {status}: {service}",
                         service=service,
                         status=status,
                         details=details,
@@ -210,7 +210,7 @@ class StreamingLogger:
         elif backlog_percentage and backlog_percentage > 95:
             level = "error"
         
-        message = f"📊 Queue status: {queue_name} ({backlog_size} items)"
+        message = f"Queue status: {queue_name} ({backlog_size} items)"
         log_data = {
             "queue_name": queue_name,
             "backlog_size": backlog_size,
@@ -242,7 +242,7 @@ class StreamingLogger:
         if self.stream_metrics["events_failed"] > 0:
             health_data["error_breakdown"] = dict(self.error_counts)
         
-        self.info("💓 Stream Health Check", **health_data)
+        self.info("Stream Health Check", **health_data)
         return health_data
     
     def _update_throughput_metrics(self):

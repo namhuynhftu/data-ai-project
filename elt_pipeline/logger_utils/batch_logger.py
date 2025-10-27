@@ -71,7 +71,7 @@ class BatchLogger:
     # Batch-specific logging methods
     def log_extraction_start(self, source: str, table: str, **kwargs):
         """Log the start of data extraction."""
-        self.info(f"📤 Starting extraction: {table} from {source}",
+        self.info(f"Starting extraction: {table} from {source}",
                  source=source,
                  table=table,
                  operation_type="extraction_start",
@@ -101,7 +101,7 @@ class BatchLogger:
     
     def log_transformation_start(self, transformation_type: str, input_table: str, **kwargs):
         """Log the start of data transformation."""
-        self.info(f"🔄 Starting transformation: {transformation_type}",
+        self.info(f"Starting transformation: {transformation_type}",
                  transformation_type=transformation_type,
                  input_table=input_table,
                  operation_type="transformation_start",
@@ -119,7 +119,7 @@ class BatchLogger:
             output_table=output_table
         )
         
-        self.info(f"✅ Transformation complete: {transformation_type}",
+        self.info(f"Transformation complete: {transformation_type}",
                  transformation_type=transformation_type,
                  input_table=input_table,
                  output_table=output_table,
@@ -130,7 +130,7 @@ class BatchLogger:
     
     def log_loading_start(self, destination: str, table: str, **kwargs):
         """Log the start of data loading."""
-        self.info(f"📥 Starting loading: {table} to {destination}",
+        self.info(f"Starting loading: {table} to {destination}",
                  destination=destination,
                  table=table,
                  operation_type="loading_start",
@@ -149,7 +149,7 @@ class BatchLogger:
             table=table
         )
         
-        self.info(f"✅ Loading complete: {table}",
+        self.info(f"Loading complete: {table}",
                  destination=destination,
                  table=table,
                  records_loaded=records_loaded,
@@ -166,12 +166,12 @@ class BatchLogger:
         
         if quality_score < 95:  # Threshold for quality issues
             self.batch_metrics["data_quality_issues"] += 1
-            self.warning(f"⚠️ Data quality issue detected: {table}",
+            self.warning(f"Data quality issue detected: {table}",
                         table=table,
                         quality_score=quality_score,
                         **other_metrics)
         else:
-            self.info(f"✅ Data quality check passed: {table}",
+            self.info(f"Data quality check passed: {table}",
                      table=table,
                      quality_score=quality_score,
                      **other_metrics)
@@ -188,7 +188,7 @@ class BatchLogger:
             "success_rate": self._calculate_success_rate()
         }
         
-        self.info("🎉 Batch Processing Summary", **summary)
+        self.info("Batch Processing Summary", **summary)
         return summary
     
     def _calculate_success_rate(self) -> float:
