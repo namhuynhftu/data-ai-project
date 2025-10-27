@@ -2,11 +2,13 @@
 ETL Pipeline: MySQL → MinIO → Snowflake
 """
 import json 
+import sys
 from datetime import datetime
 
 from elt_pipeline.batch.ops.load_data_to_snowflake import load_minio_to_snowflake_via_stage_direct
 from elt_pipeline.batch.ops.extract_data_from_mysql import load_run_config, extract_data_from_mysql
 from elt_pipeline.batch.ops.load_data_to_minio import load_data_to_minio
+from elt_pipeline.batch.utils.loaded_at_tracker import update_table_loaded_at
 from elt_pipeline.logger_utils import BatchLogger, BatchOperation
 
 metadata_path = "elt_pipeline/batch/pipelines/metadata/table_metadata.json"
@@ -17,19 +19,75 @@ PIPELINE_CONFIG = {
     "log_detailed_metrics": True
 }
 
+def get_strategy_filter():
+    """
+    Prompt user to select which tables to process based on load strategy.
+    Returns: 'all', 'full_load', or 'incremental_by_watermark'
+    """
+    print("\n" + "=" * 60)
+    print("ETL PIPELINE - TABLE STRATEGY SELECTION")
+    print("=" * 60)
+    print("Select which tables to process:")
+    print("  1. All tables (both full_load and incremental)")
+    print("  2. Only full_load tables")
+    print("  3. Only incremental_by_watermark tables")
+    print("=" * 60)
+    
+    while True:
+        choice = input("Enter your choice (1-3): ").strip()
+        
+        if choice == "1":
+            print("✓ Selected: All tables\n")
+            return "all"
+        elif choice == "2":
+            print("✓ Selected: Only full_load tables\n")
+            return "full_load"
+        elif choice == "3":
+            print("✓ Selected: Only incremental_by_watermark tables\n")
+            return "incremental_by_watermark"
+        else:
+            print("✗ Invalid choice. Please enter 1, 2, or 3.\n")
+
+def filter_tables_by_strategy(tables, strategy_filter):
+    """
+    Filter tables based on the selected strategy.
+    """
+    if strategy_filter == "all":
+        return tables
+    
+    filtered = [table for table in tables if table.get("strategy") == strategy_filter]
+    return filtered
+
 if __name__ == "__main__":
     logger = BatchLogger("batch_pipeline")
     start_time = datetime.now()
     
     logger.info("Starting ETL Pipeline", workflow="MySQL → MinIO → Snowflake")
     
+    # Get strategy filter from user
+    strategy_filter = get_strategy_filter()
+    
     # Load configuration
     run_config = load_run_config(metadata_path)
-    total_tables = len(run_config["tables"])
+    
+    # Filter tables based on strategy
+    all_tables = run_config["tables"]
+    filtered_tables = filter_tables_by_strategy(all_tables, strategy_filter)
+    
+    if not filtered_tables:
+        logger.warning("No tables match the selected strategy", strategy=strategy_filter)
+        print(f"\n⚠ No tables found with strategy: {strategy_filter}")
+        sys.exit(0)
+    
+    # Update run_config with filtered tables
+    run_config["tables"] = filtered_tables
+    
+    total_tables = len(filtered_tables)
     ingestion_date = datetime.now().isoformat()
     
     logger.info("Pipeline loaded", 
                tables=total_tables,
+               strategy_filter=strategy_filter,
                ingestion_date=ingestion_date)
     
     # PHASE 1: Extract to MinIO
@@ -84,7 +142,8 @@ if __name__ == "__main__":
                 **result["data"],
                 "minio_file_info": result["minio_file_info"],
                 "ingestion_date": ingestion_date,
-                "add_ingestion_column": PIPELINE_CONFIG["add_ingestion_date"]
+                "add_ingestion_column": PIPELINE_CONFIG["add_ingestion_date"],
+                "is_first_incremental_load": result["data"].get("is_first_incremental_load", False)
             }
             
             # Load to Snowflake (with temp file fallback for localhost)
@@ -98,6 +157,20 @@ if __name__ == "__main__":
                        table=table_name,
                        rows=rows_processed,
                        method=snowflake_result.get("method", "temp_file"))
+            
+            # Update loaded_at.json for incremental tables after successful load
+            if table_config.get("strategy") == "incremental_by_watermark":
+                new_watermark = result["data"].get("new_watermark")
+                if new_watermark:
+                    update_table_loaded_at(table_name, new_watermark)
+                    logger.info("Updated loaded_at metadata", 
+                               table=table_name,
+                               new_watermark=new_watermark)
+                else:
+                    # If no new watermark, update with current timestamp
+                    update_table_loaded_at(table_name)
+                    logger.info("Updated loaded_at metadata with current timestamp", 
+                               table=table_name)
     
     logger.info("PHASE 2 COMPLETED", 
                tables_loaded=len(minio_results))
@@ -112,6 +185,7 @@ if __name__ == "__main__":
     logger.info("ETL PIPELINE COMPLETED SUCCESSFULLY")
     logger.info("=" * 60)
     logger.info("SUMMARY:")
+    logger.info(f"  Strategy Filter: {strategy_filter}")
     logger.info(f"  Tables Processed: {len(minio_results)}")
     logger.info(f"  Total Records: {total_records_processed:,}")
     logger.info(f"  Duration: {duration:.1f} seconds")

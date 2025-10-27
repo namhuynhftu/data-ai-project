@@ -28,7 +28,7 @@ with source_data as (
     {% if is_incremental() %}
         -- Incremental logic: only process orders modified since last run
         where
-            purchase_date > (select max(purchase_date) from {{ this }})
+            purchase_date > (select max(purchase_date) as max_purchase_date from {{ this }})
             or order_id in (
                 select order_id
                 from {{ ref('int_orders_lifecycle') }}

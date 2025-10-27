@@ -85,7 +85,11 @@ def _load_direct_from_minio(extracted_data: Dict[str, Any], logger):
 
 def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stage_info: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Load data from Snowflake stage to final table with overwrite mode.
+    Load data from Snowflake stage to final table.
+    For full_load strategy: truncates table first (overwrite mode)
+    For incremental_by_watermark strategy:
+      - First load (load_from is null): truncates table (same as full load)
+      - Subsequent loads: appends data (no truncate)
     """
     logger = get_snowflake_logger()
     
@@ -97,6 +101,8 @@ def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stag
         database = stage_info["database"]
         schema = stage_info["schema"]
         internal_snowflake_path = stage_info.get("internal_snowflake_path")
+        strategy = table_config.get("strategy", "full_load")
+        is_first_incremental_load = extracted_data.get("is_first_incremental_load", False)
         
         # Check if we need to add ingestion_date column
         add_ingestion_column = extracted_data.get("add_ingestion_column", False)
@@ -122,10 +128,20 @@ def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stag
             cursor = conn.cursor()
             
             try:
-                # Truncate table for overwrite mode
-                truncate_sql = f"TRUNCATE TABLE {database}.{schema}.{snowflake_target_table.upper()}"
-                cursor.execute(truncate_sql)
-                logger.info("Table truncated", table=snowflake_target_table)
+                # Determine if we should truncate
+                should_truncate = (strategy == "full_load") or (strategy == "incremental_by_watermark" and is_first_incremental_load)
+                
+                if should_truncate:
+                    truncate_sql = f"TRUNCATE TABLE {database}.{schema}.{snowflake_target_table.upper()}"
+                    cursor.execute(truncate_sql)
+                    if strategy == "full_load":
+                        logger.info("Table truncated (full_load strategy)", table=snowflake_target_table)
+                    else:
+                        logger.info("Table truncated (first incremental load)", table=snowflake_target_table)
+                else:
+                    logger.info("Appending data (incremental load)", 
+                               table=snowflake_target_table, 
+                               strategy=strategy)
                 
                 # Check if ingestion_date column exists, add if needed
                 if add_ingestion_column and ingestion_date:

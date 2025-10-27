@@ -68,7 +68,7 @@ select
 
     -- Recency, Frequency, Monetary (RFM)
     datediff('day', co.last_order_date, current_date()) as recency_days,
-    co.total_orders as frequency,
+    co.total_orders as frequency_score,
     co.lifetime_value as monetary_value
 
 from customer_dim as cd
