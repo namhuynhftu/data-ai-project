@@ -72,9 +72,9 @@ fa-dae2-capstone-namhuynh/
 │   │   └── examples/                  # Example implementations
 │   └── docs/                          # Pipeline documentation
 ├── 🏭 infra/                          # Infrastructure setup
-│   ├── mysql_db/                      # MySQL container setup
-│   ├── minio/                         # MinIO setup
-│   └── snowflake_dw/                  # Snowflake configuration
+│       ├── mysql_db/                      # MySQL container setup
+│       ├── minio/                         # MinIO setup
+│       └── snowflake_dw/                  # Snowflake configuration
 ├── 🔄 dwh/                            # Data warehouse layer
 │   └── snowflake/                     # dbt project
 │       ├── models/                    # dbt models
