@@ -7,6 +7,8 @@
 
 with cleaned as (
     select
+        {{ dbt_utils.generate_surrogate_key(['order_id', 'review_id']) }} as review_key,
+        review_id,
         order_id,
         review_score,
         review_sentiment,

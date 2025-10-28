@@ -1,3 +1,8 @@
+{{
+  config(
+    tags=['fact']
+    )
+}}
 select
     p.order_id,
     p.payment_sequential,
