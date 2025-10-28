@@ -1,3 +1,14 @@
+{{
+    config(
+        materialized='incremental',
+        unique_key='order_item_key',
+        on_schema_change='sync_all_columns',
+        incremental_strategy='merge',
+        tags=['fact', 'incremental']
+    )
+}}
+
+
 with base as (
     select
         oi.order_id,
@@ -29,3 +40,7 @@ select
     freight_value,
     total_item_value
 from base
+where 1=1
+{% if is_incremental() %}
+  and purchase_date >= coalesce((select max(purchase_date) from {{ this }}), '1900-01-01')
+{% endif %}

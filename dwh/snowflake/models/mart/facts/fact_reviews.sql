@@ -1,13 +1,16 @@
 {{
     config(
         materialized='incremental',
-        unique_key='order_id',
+        unique_key='review_id',
         on_schema_change='sync_all_columns',
+        incremental_strategy='merge',
         tags=['fact', 'incremental']
     )
 }}
 
 select
+    r.review_key,
+    r.review_id,
     r.order_id,
     r.review_score,
     r.review_sentiment,

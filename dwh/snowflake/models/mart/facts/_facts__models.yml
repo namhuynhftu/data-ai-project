@@ -67,6 +67,64 @@ models:
       owner: "Data Engineering Team"
       layer: "mart"
       criticality: "high"
+    columns:
+      - name: order_item_key
+        description: "Primary key - Surrogate key for order item (order_id + order_item_id)"
+        data_tests:
+          - unique
+          - not_null
+      - name: order_id
+        description: "Foreign key to dim_order"
+      - name: order_item_id
+        description: "Line item number within the order"  
+      - name: customer_key
+        description: "Foreign key to dim_customer"
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_key
+      - name: seller_key
+        description: "Foreign key to dim_seller"
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_seller')
+                field: seller_key
+      - name: product_key
+        description: "Foreign key to dim_product"
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_key
+      - name: purchase_date
+        description: "Date when order was placed by customer"
+      - name: delivery_date
+        description: "Date when order was delivered to customer"
+      - name: shipping_limit_date
+        description: "Date by which the order should be shipped"
+      - name: freight_value
+        description: "Freight cost for the order item"
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: total_item_value
+        description: "Total value for the order item (price + freight)"
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: price
+        description: "Price of the product at the time of order"
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
 
   - name: fact_payments
     description: >
@@ -80,6 +138,27 @@ models:
     meta:
       owner: "Data Engineering Team"
       layer: "mart"
+    columns:
+      - name: order_id
+        description: "Order unique identifier"
+        data_tests:
+          - not_null
+      - name: payment_sequential
+        description: "Sequential number of the payment for the order"
+      - name: payment_type_key
+        description: "Foreign key to dim_payment_type"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_payment_type')
+                field: payment_type_key
+      - name: payment_value
+        description: "Monetary value of the payment"
+      - name: payment_installments
+        description: "Number of installments for the payment"
+      - name: installment_value
+        description: "Value of each installment"
 
   - name: fact_reviews
     description: >
@@ -93,3 +172,27 @@ models:
     meta:
       owner: "Data Engineering Team"
       layer: "mart"
+    columns:
+      - name: review_key
+        description: "Primary key - Unique review identifier"
+        data_tests:
+          - unique
+          - not_null
+      - name: review_id
+        description: "Original review identifier from source system"
+        data_tests:
+          - not_null
+      - name: order_id
+        description: "Order unique identifier"
+        data_tests:
+          - not_null
+      - name: review_score
+        description: "Customer rating score for the order"
+      - name: review_sentiment
+        description: "Sentiment classification of the review text (positive, neutral, negative)"
+      - name: review_creation_date
+        description: "Date when the review was created"
+      - name: review_answer_timestamp
+        description: "Timestamp when the review was answered by the seller"
+      - name: has_comment
+        description: "Binary flag indicating if the review contains a comment"
