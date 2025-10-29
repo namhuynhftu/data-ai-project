@@ -70,13 +70,21 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
     table_config = run_config["current_table"]
     table_name = table_config.get("source_table")
     
+    # To avoid schema drift issues, use the data contract from pipeline/schema.
+    schema_path = Path(__file__).parent.parent / "pipelines" / "schema" / f"{table_name}.json"
+    with open(schema_path, "r") as schema_file:
+        schema_contract = json.load(schema_file)
+        logger.info("Loaded schema contract", table=table_name, schema_path=str(schema_path))
+        # Extract column names from the schema contract
+        selected_columns = [col["name"] for col in schema_contract.get("columns", [])]
+    
     with BatchOperation(logger, "extraction", source="mysql", table=table_name) as op:
         # Initialize MySQL loader with database parameters
         mysql_loader = MySQLLoader(source_db_params)
         
         # Construct SQL query
         sql = f"""
-        SELECT * 
+        SELECT {', '.join(selected_columns)}
         FROM {table_config.get("source_table")}
         WHERE 1=1
     """

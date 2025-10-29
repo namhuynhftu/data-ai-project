@@ -1,22 +1,22 @@
 {
   "metadata_description": "Tracks incremental load timestamps for tables using incremental_by_watermark strategy",
-  "last_updated": "2025-10-27T22:31:57.788019",
+  "last_updated": "2025-10-30T02:18:05.150113",
   "tables": {
     "olist_order_items_dataset": {
-      "load_from": "2018-01-01 00:00:00",
-      "load_at": "2025-10-27 22:31:08",
+      "load_from": null,
+      "load_at": "2018-10-01 00:00:00",
       "watermark_column": "shipping_limit_date",
       "strategy": "incremental_by_watermark"
     },
     "olist_order_reviews_dataset": {
-      "load_from": "2018-01-01 00:00:00",
-      "load_at": "2025-10-27 22:31:09",
+      "load_from": null,
+      "load_at": "2018-10-01 00:00:00",
       "watermark_column": "review_creation_date",
       "strategy": "incremental_by_watermark"
     },
     "olist_orders_dataset": {
-      "load_from": "2018-01-01 00:00:00",
-      "load_at": "2025-10-27 22:31:09",
+      "load_from": null,
+      "load_at": "2018-10-01 00:00:00",
       "watermark_column": "order_purchase_timestamp",
       "strategy": "incremental_by_watermark"
     }
