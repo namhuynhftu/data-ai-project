@@ -54,20 +54,63 @@ git log --oneline --grep="dev:" -5
 ```
 
 ### B. Demonstrate Batch Pipeline (MySQL → MinIO → Snowflake)
-```bash
-# Run the complete batch pipeline
-python elt_pipeline/batch/pipelines/main.py 
-# Select option for full load and incremental load
+```sql
+-- Check data source in MySQL
+SELECT 
+	count(1) AS customers, 
+	(SELECT count(1) FROM olist_geolocation_dataset) AS geolocation_records, 
+	(SELECT count(1) FROM olist_order_items_dataset ooid ) AS order_items_records, 
+	(SELECT count(1) FROM olist_order_payments_dataset) AS order_payments_records, 
+	(SELECT count(1) FROM olist_order_reviews_dataset) AS order_reviews_records, 
+	(SELECT count(1) FROM olist_orders_dataset) AS orders_records, 
+	(SELECT count(1) FROM olist_products_dataset) AS product_records, 
+	(SELECT count(1) FROM olist_sellers_dataset) AS seller_records, 
+	(SELECT count(1) FROM product_category_name_translation ) AS product_cat_records
+FROM olist_customers_dataset; 
+-- #2. Incremental Load Tables Check
+SELECT
+	count(1) AS orders_records, 
+	(SELECT count(1) FROM olist_order_reviews_dataset) AS order_reviews_records,
+	(SELECT count(1) FROM olist_order_items_dataset) AS order_items_records
+FROM olist_orders_dataset;
+-- #3.Full Load Tables Check
+SELECT 
+	count(1) AS customers, 
+	(SELECT count(1) FROM olist_geolocation_dataset) AS geolocation_records, 
+	(SELECT count(1) FROM olist_order_payments_dataset) AS order_payments_records, 
+	(SELECT count(1) FROM olist_products_dataset) AS product_records, 
+	(SELECT count(1) FROM olist_sellers_dataset) AS seller_records, 
+	(SELECT count(1) FROM product_category_name_translation ) AS product_cat_records
+FROM olist_customers_dataset; 
 
-
+-- And check the snowflake target before running pipeline to show data no data in target table in first place
 ```
+
+
+```bash
+# First run full load of all table with tables config is full load
+python elt_pipeline/batch/pipeline/main.py
+```
+Choose option 3 to load all tables with the full load strategy
+incremental load with option 4 with the the config:
+	"load_from": null,
+    "load_at": "2018-10-01 00:00:00"
+Second run incremental load with option 4 to demonstrate incremental dbt models:
+And with second load, load_at will be updated to current timestamp automatically after load and load_from will be updated to previous load_at value automatically after.
+	"load_from": "2018-10-01 00:00:00",
+    "load_at": current_timestamp
+```md
+# Select option for full load and incremental load
 
 ### C. Demonstrate Streaming Pipeline (Real-time → PostgreSQL)
 ```bash
 # Run streaming pipeline demo
-python elt_pipeline/streaming/pipelines/main.py 
+python elt_pipeline/streaming/pipeline/main.py 
+
+```
 
 # Every run check data on DBeaver to see that data arrive
+```sql
 select 
     count(1) as num_of_txns, 
 	(select count(1) from detailed_transactions) as num_of_detailed_txns, 
@@ -99,13 +142,14 @@ SELECT
 	(SELECT count(1) FROM OLIST_SELLERS_DATASET) AS seller_records, 
 	(SELECT count(1) FROM PRODUCT_CATEGORY_NAME_TRANSLATION ) AS product_cat_records
 FROM olist_customers_dataset; 
--- #2. Incremental Load Tables Check
 
+-- #2. Incremental Load Tables Check
 SELECT
 	count(1) AS orders_records, 
 	(SELECT count(1) FROM OLIST_ORDER_REVIEWS_DATASET) AS order_reviews_records,
 	(SELECT count(1) FROM OLIST_ORDER_ITEMS_DATASET) AS order_items_records
-FROM OLIST_ORDERS_DATASET
+FROM OLIST_ORDERS_DATASET;
+
 -- #3.Full Load Tables Check
 SELECT 
 	count(1) AS customers, 

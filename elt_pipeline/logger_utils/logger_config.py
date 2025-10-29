@@ -338,7 +338,7 @@ class ELTPipelineLogger:
         self.metrics["operations"].append(perf_data)
         self.metrics["total_records_processed"] += records
         
-        self.info(f"⚡ Performance: {operation}", **perf_data)
+        self.info(f"Performance: {operation}", **perf_data)
     
     def log_database_operation(self, operation: str, table: str, rows_affected: int, 
                               duration: float, query: str = None, **kwargs):
@@ -377,15 +377,15 @@ class ELTPipelineLogger:
             **quality_metrics
         }
         
-        self.info(f"📊 Data Quality: {table}", **quality_data)
+        self.info(f"Data Quality: {table}", **quality_data)
     
     def log_operation_start(self, operation: str, **kwargs):
         """Log the start of an operation."""
-        self.info(f"🚀 Starting: {operation}", operation_status="start", **kwargs)
+        self.info(f"Starting: {operation}", operation_status="start", **kwargs)
     
     def log_operation_end(self, operation: str, success: bool = True, **kwargs):
         """Log the end of an operation."""
-        status = "✅ Completed" if success else "Failed"
+        status = "Completed" if success else "Failed"
         self.info(f"{status}: {operation}", operation_status="end", success=success, **kwargs)
     
     def log_pipeline_summary(self):
@@ -659,4 +659,4 @@ if __name__ == "__main__":
         time.sleep(0.1)  # Simulate work
         op.update_records(250)
     
-    print("\nDemo completed! Check logs/ directory for output files.")
+    print("Demo completed! Check logs/ directory for output files.")

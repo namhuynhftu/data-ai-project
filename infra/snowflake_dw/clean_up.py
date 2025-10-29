@@ -216,33 +216,234 @@ def cleanup_minio():
         traceback.print_exc()
 
 
+def truncate_raw_data_tables():
+    """Truncate all tables in RAW_DATA schema only"""
+    load_dotenv()
+    
+    params = {
+        'account': os.getenv('SNOWFLAKE_ACCOUNT'),
+        'user': os.getenv('SNOWFLAKE_USER'),
+        'private_key_file': os.getenv('SNOWFLAKE_PRIVATE_KEY_FILE_PATH'),
+        'private_key_file_pwd': os.getenv('SNOWFLAKE_PRIVATE_KEY_FILE_PWD'),
+        'warehouse': os.getenv('SNOWFLAKE_WAREHOUSE'),
+        'database': os.getenv('SNOWFLAKE_DATABASE'),
+        'schema': os.getenv('SNOWFLAKE_SCHEMA'),
+        'role': os.getenv('SNOWFLAKE_ROLE'),
+        'authenticator': 'SNOWFLAKE_JWT'
+    }
+    
+    print("\n📋 Truncating all tables in RAW_DATA schema...")
+    print("-" * 60)
+    
+    try:
+        conn = snowflake.connector.connect(**params)
+        cursor = conn.cursor()
+        
+        cursor.execute(f"USE SCHEMA {params['database']}.RAW_DATA")
+        cursor.execute("SHOW TABLES")
+        tables = cursor.fetchall()
+        
+        if tables:
+            print(f"   Found {len(tables)} table(s) in RAW_DATA:")
+            truncated = 0
+            failed = 0
+            
+            for table in tables:
+                table_name = table[1]
+                try:
+                    cursor.execute(f"TRUNCATE TABLE {params['database']}.RAW_DATA.{table_name}")
+                    print(f"      ✅ Truncated: {table_name}")
+                    truncated += 1
+                except Exception as e:
+                    print(f"      ❌ Failed to truncate {table_name}: {e}")
+                    failed += 1
+            
+            print(f"   📊 Result: {truncated} truncated, {failed} failed")
+        else:
+            print("   ℹ️  No tables found in RAW_DATA schema")
+        
+        conn.close()
+        print("✅ RAW_DATA truncation completed!\n")
+        
+    except Exception as e:
+        print(f"❌ Operation failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def drop_staging_analytics_schemas():
+    """Drop STAGING and ANALYTICS schemas"""
+    load_dotenv()
+    
+    params = {
+        'account': os.getenv('SNOWFLAKE_ACCOUNT'),
+        'user': os.getenv('SNOWFLAKE_USER'),
+        'private_key_file': os.getenv('SNOWFLAKE_PRIVATE_KEY_FILE_PATH'),
+        'private_key_file_pwd': os.getenv('SNOWFLAKE_PRIVATE_KEY_FILE_PWD'),
+        'warehouse': os.getenv('SNOWFLAKE_WAREHOUSE'),
+        'database': os.getenv('SNOWFLAKE_DATABASE'),
+        'schema': os.getenv('SNOWFLAKE_SCHEMA'),
+        'role': os.getenv('SNOWFLAKE_ROLE'),
+        'authenticator': 'SNOWFLAKE_JWT'
+    }
+    
+    print("\n📋 Dropping STAGING and ANALYTICS schemas...")
+    print("-" * 60)
+    
+    try:
+        conn = snowflake.connector.connect(**params)
+        cursor = conn.cursor()
+        
+        # Drop STAGING schema
+        try:
+            cursor.execute(f"DROP SCHEMA IF EXISTS {params['database']}.STAGING CASCADE")
+            print("   ✅ STAGING schema dropped successfully")
+        except Exception as e:
+            print(f"   ⚠️  Error dropping STAGING schema: {e}")
+        
+        # Drop ANALYTICS schema
+        try:
+            cursor.execute(f"DROP SCHEMA IF EXISTS {params['database']}.ANALYTICS CASCADE")
+            print("   ✅ ANALYTICS schema dropped successfully")
+        except Exception as e:
+            print(f"   ⚠️  Error dropping ANALYTICS schema: {e}")
+        
+        conn.close()
+        print("✅ Schema cleanup completed!\n")
+        
+    except Exception as e:
+        print(f"❌ Operation failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def drop_minio_stage():
+    """Drop MINIO_STAGE_SHARED stage"""
+    load_dotenv()
+    
+    params = {
+        'account': os.getenv('SNOWFLAKE_ACCOUNT'),
+        'user': os.getenv('SNOWFLAKE_USER'),
+        'private_key_file': os.getenv('SNOWFLAKE_PRIVATE_KEY_FILE_PATH'),
+        'private_key_file_pwd': os.getenv('SNOWFLAKE_PRIVATE_KEY_FILE_PWD'),
+        'warehouse': os.getenv('SNOWFLAKE_WAREHOUSE'),
+        'database': os.getenv('SNOWFLAKE_DATABASE'),
+        'schema': os.getenv('SNOWFLAKE_SCHEMA'),
+        'role': os.getenv('SNOWFLAKE_ROLE'),
+        'authenticator': 'SNOWFLAKE_JWT'
+    }
+    
+    print("\n📋 Dropping MINIO_STAGE_SHARED stage...")
+    print("-" * 60)
+    
+    try:
+        conn = snowflake.connector.connect(**params)
+        cursor = conn.cursor()
+        
+        cursor.execute(f"USE SCHEMA {params['database']}.RAW_DATA")
+        cursor.execute(f"DROP STAGE IF EXISTS {params['database']}.RAW_DATA.MINIO_STAGE_SHARED")
+        print("   ✅ MINIO_STAGE_SHARED stage dropped successfully")
+        
+        conn.close()
+        print("✅ Stage cleanup completed!\n")
+        
+    except Exception as e:
+        print(f"❌ Operation failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def show_menu():
+    """Display cleanup menu and get user choice"""
+    print("\n" + "=" * 60)
+    print("🧹 CLEANUP TOOL - SELECT OPERATIONS")
+    print("=" * 60)
+    print("Available cleanup operations:")
+    print("  1. Truncate all tables in RAW_DATA schema")
+    print("  2. Drop STAGING and ANALYTICS schemas")
+    print("  3. Drop MINIO_STAGE_SHARED stage")
+    print("  4. Clean up MinIO (except raw-data folder)")
+    print("  5. Run ALL Snowflake cleanups (1 + 2 + 3)")
+    print("  6. Run COMPLETE cleanup (ALL operations including MinIO)")
+    print("  0. Exit")
+    print("=" * 60)
+    
+    choice = input("\nEnter your choice (0-6): ").strip()
+    return choice
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print("🧹 COMPLETE CLEANUP TOOL")
-    print("=" * 60)
-    print("This script will:")
-    print("  1. Truncate all tables in RAW_DATA schema")
-    print("  2. Drop STAGING schema")
-    print("  3. Drop ANALYTICS schema")
-    print("  4. Drop MINIO_STAGE_SHARED stage")
-    print("  5. Clean up MinIO (except raw-data folder)")
+    print("🧹 INTERACTIVE CLEANUP TOOL")
+    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     
-    # Ask for confirmation
-    confirmation = input("\n⚠️  Are you sure you want to proceed? (yes/no): ").strip().lower()
-    
-    if confirmation != "yes":
-        print("\n❌ Cleanup cancelled by user")
-        exit(0)
-    
-    print("\n🚀 Starting cleanup process...\n")
-    
-    # Run Snowflake cleanup
-    cleanup_snowflake()
-    
-    # Run MinIO cleanup
-    cleanup_minio()
-    
-    print("\n" + "=" * 60)
-    print("✅ ALL CLEANUP OPERATIONS COMPLETED!")
-    print("=" * 60)
+    while True:
+        choice = show_menu()
+        
+        if choice == "0":
+            print("\n👋 Exiting cleanup tool. Goodbye!")
+            break
+        
+        elif choice == "1":
+            confirmation = input("\n⚠️  Truncate all RAW_DATA tables? (yes/no): ").strip().lower()
+            if confirmation == "yes":
+                truncate_raw_data_tables()
+            else:
+                print("❌ Operation cancelled\n")
+        
+        elif choice == "2":
+            confirmation = input("\n⚠️  Drop STAGING and ANALYTICS schemas? (yes/no): ").strip().lower()
+            if confirmation == "yes":
+                drop_staging_analytics_schemas()
+            else:
+                print("❌ Operation cancelled\n")
+        
+        elif choice == "3":
+            confirmation = input("\n⚠️  Drop MINIO_STAGE_SHARED stage? (yes/no): ").strip().lower()
+            if confirmation == "yes":
+                drop_minio_stage()
+            else:
+                print("❌ Operation cancelled\n")
+        
+        elif choice == "4":
+            confirmation = input("\n⚠️  Clean up MinIO bucket? (yes/no): ").strip().lower()
+            if confirmation == "yes":
+                cleanup_minio()
+            else:
+                print("❌ Operation cancelled\n")
+        
+        elif choice == "5":
+            print("\n⚠️  This will run ALL Snowflake cleanup operations:")
+            print("     - Truncate RAW_DATA tables")
+            print("     - Drop STAGING and ANALYTICS schemas")
+            print("     - Drop MINIO_STAGE_SHARED stage")
+            confirmation = input("\nProceed? (yes/no): ").strip().lower()
+            if confirmation == "yes":
+                cleanup_snowflake()
+            else:
+                print("❌ Operation cancelled\n")
+        
+        elif choice == "6":
+            print("\n⚠️  This will run COMPLETE cleanup:")
+            print("     - All Snowflake operations")
+            print("     - MinIO cleanup")
+            confirmation = input("\nProceed? (yes/no): ").strip().lower()
+            if confirmation == "yes":
+                cleanup_snowflake()
+                cleanup_minio()
+                print("\n" + "=" * 60)
+                print("✅ ALL CLEANUP OPERATIONS COMPLETED!")
+                print("=" * 60)
+            else:
+                print("❌ Operation cancelled\n")
+        
+        else:
+            print("\n❌ Invalid choice. Please enter a number between 0-6.\n")
+        
+        # Ask if user wants to continue
+        if choice != "0":
+            continue_choice = input("\nPerform another cleanup operation? (yes/no): ").strip().lower()
+            if continue_choice != "yes":
+                print("\n👋 Exiting cleanup tool. Goodbye!")
+                break

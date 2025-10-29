@@ -5,8 +5,8 @@ snowflake:
       type: snowflake
       account: "{{ env_var('SNOWFLAKE_CI_ACCOUNT') }}"
       user: "{{ env_var('SNOWFLAKE_CI_USER') }}"
-      private_key: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE') }}"
-      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_FILE_PWD') }}"
+      private_key: "{{ env_var('SNOWFLAKE_CI_PRIVATE_KEY_FILE') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_CI_PRIVATE_KEY_FILE_PWD') }}"
       database: "{{ env_var('SNOWFLAKE_CI_DATABASE') }}"
       warehouse: "{{ env_var('SNOWFLAKE_CI_WAREHOUSE') }}"
       role: "{{ env_var('SNOWFLAKE_CI_ROLE') }}"

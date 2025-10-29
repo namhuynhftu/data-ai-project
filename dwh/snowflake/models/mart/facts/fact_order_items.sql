@@ -40,7 +40,11 @@ select
     freight_value,
     total_item_value
 from base
-where 1=1
-{% if is_incremental() %}
-  and purchase_date >= coalesce((select max(purchase_date) from {{ this }}), '1900-01-01')
-{% endif %}
+where
+    1 = 1
+    {% if is_incremental() %}
+        and purchase_date >= coalesce(
+            (select max(purchase_date) as max_date from {{ this }}),
+            '1900-01-01'
+        )
+    {% endif %}
