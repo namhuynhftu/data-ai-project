@@ -53,7 +53,7 @@ group_by_and_order_by_style = implicit
 [sqlfluff:templater:dbt]
 project_dir = ./dwh/snowflake
 profiles_dir = .dbt
-# profile = dbt_sf
-# target = dev
+profile = snowflake
+target = ci
 dbt_skip_compilation_error = True
 dbt_skip_connection_error = True
