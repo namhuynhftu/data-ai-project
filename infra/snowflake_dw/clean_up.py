@@ -5,8 +5,11 @@ This script performs complete cleanup:
 2. Drops STAGING and ANALYTICS schemas
 3. Drops MINIO_STAGE_SHARED stage
 4. Cleans up MinIO subfolders except raw-data
+5. Resets incremental load metadata
 """
 import os
+import json
+from pathlib import Path
 import snowflake.connector
 from minio import Minio
 from dotenv import load_dotenv
@@ -353,6 +356,53 @@ def drop_minio_stage():
         traceback.print_exc()
 
 
+def reset_incremental_metadata():
+    """Reset incremental load metadata to initial state"""
+    print("\n📋 Resetting incremental load metadata...")
+    print("-" * 60)
+    
+    # Path to loaded_at.json
+    metadata_path = Path(__file__).parent.parent.parent / "elt_pipeline" / "batch" / "pipelines" / "metadata" / "loaded_at.json"
+    
+    try:
+        # Read current metadata
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        
+        print(f"   Found metadata file: {metadata_path}")
+        
+        # Reset load_from and load_at for all tables
+        reset_count = 0
+        for table_name, table_data in metadata.get("tables", {}).items():
+            old_load_from = table_data.get("load_from")
+            old_load_at = table_data.get("load_at")
+            
+            table_data["load_from"] = None
+            table_data["load_at"] = "2018-01-01 00:00:00"
+            
+            print(f"   ✅ Reset {table_name}:")
+            print(f"      load_from: {old_load_from} → null")
+            print(f"      load_at: {old_load_at} → 2018-01-01 00:00:00")
+            reset_count += 1
+        
+        # Update last_updated timestamp
+        metadata["last_updated"] = datetime.now().isoformat()
+        
+        # Write back to file
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        print(f"\n   📊 Result: {reset_count} table(s) reset")
+        print("✅ Incremental metadata reset completed!\n")
+        
+    except FileNotFoundError:
+        print(f"   ❌ Metadata file not found: {metadata_path}")
+    except Exception as e:
+        print(f"❌ Operation failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def show_menu():
     """Display cleanup menu and get user choice"""
     print("\n" + "=" * 60)
@@ -363,12 +413,13 @@ def show_menu():
     print("  2. Drop STAGING and ANALYTICS schemas")
     print("  3. Drop MINIO_STAGE_SHARED stage")
     print("  4. Clean up MinIO (except raw-data folder)")
-    print("  5. Run ALL Snowflake cleanups (1 + 2 + 3)")
-    print("  6. Run COMPLETE cleanup (ALL operations including MinIO)")
+    print("  5. Reset incremental load metadata")
+    print("  6. Run ALL Snowflake cleanups (1 + 2 + 3)")
+    print("  7. Run COMPLETE cleanup (ALL operations including MinIO and metadata reset)")
     print("  0. Exit")
     print("=" * 60)
     
-    choice = input("\nEnter your choice (0-6): ").strip()
+    choice = input("\nEnter your choice (0-7): ").strip()
     return choice
 
 
@@ -414,6 +465,13 @@ if __name__ == "__main__":
                 print("❌ Operation cancelled\n")
         
         elif choice == "5":
+            confirmation = input("\n⚠️  Reset incremental load metadata to initial state? (yes/no): ").strip().lower()
+            if confirmation == "yes":
+                reset_incremental_metadata()
+            else:
+                print("❌ Operation cancelled\n")
+        
+        elif choice == "6":
             print("\n⚠️  This will run ALL Snowflake cleanup operations:")
             print("     - Truncate RAW_DATA tables")
             print("     - Drop STAGING and ANALYTICS schemas")
@@ -424,14 +482,16 @@ if __name__ == "__main__":
             else:
                 print("❌ Operation cancelled\n")
         
-        elif choice == "6":
+        elif choice == "7":
             print("\n⚠️  This will run COMPLETE cleanup:")
             print("     - All Snowflake operations")
             print("     - MinIO cleanup")
+            print("     - Reset incremental metadata")
             confirmation = input("\nProceed? (yes/no): ").strip().lower()
             if confirmation == "yes":
                 cleanup_snowflake()
                 cleanup_minio()
+                reset_incremental_metadata()
                 print("\n" + "=" * 60)
                 print("✅ ALL CLEANUP OPERATIONS COMPLETED!")
                 print("=" * 60)
@@ -439,7 +499,7 @@ if __name__ == "__main__":
                 print("❌ Operation cancelled\n")
         
         else:
-            print("\n❌ Invalid choice. Please enter a number between 0-6.\n")
+            print("\n❌ Invalid choice. Please enter a number between 0-7.\n")
         
         # Ask if user wants to continue
         if choice != "0":

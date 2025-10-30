@@ -91,7 +91,7 @@ class BatchLogger:
             table=table
         )
         
-        self.info(f"✅ Extraction complete: {table}",
+        self.info(f"Extraction complete: {table}",
                  source=source,
                  table=table,
                  records_extracted=records_extracted,

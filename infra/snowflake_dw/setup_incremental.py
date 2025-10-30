@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Path to the loaded_at.json file
-LOADED_AT_FILE = Path(__file__).parent / "loaded_at.json"
+LOADED_AT_FILE = Path(__file__).parent.parent.parent / "elt_pipeline" / "batch" / "pipelines" / "metadata" / "loaded_at.json"
 
 # Initial load_at timestamp (start of data range)
 INITIAL_LOAD_AT = "2018-01-01 00:00:00"

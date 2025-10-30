@@ -22,12 +22,8 @@ docker-compose ps
 ```bash
 # Activate virtual environment
 source .venv/Scripts/activate  # Windows Git Bash
-# OR
-.venv\Scripts\activate.bat     # Windows CMD
 
-# Verify environment
-python --version
-pip list | grep snowflake
+source .env # Load environment variables
 ```
 
 ### 3. Test Connections (Optional - if time permits)
