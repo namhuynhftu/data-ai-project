@@ -31,7 +31,8 @@ class TestLoadRunConfig:
             ]
         }
         
-        config_file = tmp_path / "test_config.json"
+        test_file_name = "test_config.json"
+        config_file = tmp_path / test_file_name
         config_file.write_text(json.dumps(config_data))
         
         # Mock environment variables

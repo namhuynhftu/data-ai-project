@@ -2,6 +2,7 @@
 MinIO to Snowflake data loading with temp file fallback for local development.
 """
 import os 
+import sys
 from typing import Dict, Any
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +11,13 @@ from dotenv import load_dotenv
 from elt_pipeline.batch.utils.snowflake_loader import SnowflakeLoader
 from elt_pipeline.logger_utils import get_snowflake_logger, BatchOperation
 
-load_dotenv()
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Load environment variables from config/app/local.env
+env_path = project_root / "config" / "app" / "local.env"
+load_dotenv(dotenv_path=env_path)
 
 
 def load_minio_to_snowflake_via_stage_direct(extracted_data: Dict[str, Any]) -> Dict[str, Any]:

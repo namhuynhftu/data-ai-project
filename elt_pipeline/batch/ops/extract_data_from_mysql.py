@@ -1,16 +1,24 @@
 from pathlib import Path
 import os
 import json
+import sys
 from dotenv import load_dotenv
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 import pandas as pd
 
-load_dotenv()
-
 from elt_pipeline.batch.utils.mysql_loader import MySQLLoader
 from elt_pipeline.batch.utils.loaded_at_tracker import get_table_loaded_at, get_incremental_query_filter
 from elt_pipeline.logger_utils import get_mysql_logger, BatchOperation
+
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Load environment variables from config/app/local.env
+env_path = project_root / "config" / "app" / "local.env"
+load_dotenv(dotenv_path=env_path)
+
 
 # Setup centralized logging
 logger = get_mysql_logger()

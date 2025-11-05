@@ -13,5 +13,5 @@ COPY ./docker-entrypoint-initdb.d/ /docker-entrypoint-initdb.d/
 
 # Set correct permissions
 RUN chown mysql:mysql /etc/mysql/conf.d/my.cnf && \
-    chmod 644 /etc/mysql/conf.d/my.cnf && \
+    chmod 600 /etc/mysql/conf.d/my.cnf && \
     chmod -R 755 /docker-entrypoint-initdb.d/
