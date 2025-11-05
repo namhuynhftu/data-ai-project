@@ -28,19 +28,6 @@ services:
       - de_network
     restart: unless-stopped
 
-  postgres_dw:
-    image: postgres:15
-    container_name: postgres_dw
-    env_file:
-      - ${LOCAL_ENV}
-    volumes:
-      - ../config/database/postgres/scripts:/docker-entrypoint-initdb.d
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - de_network
-
   minio:
     container_name: data_lake_minio
     image: minio/minio:latest # Or a specific version, e.g., minio/minio:RELEASE.2024-09-26T00-00-00Z
@@ -55,6 +42,11 @@ services:
     networks:
       - de_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     
 networks:
   de_network:
@@ -64,5 +56,4 @@ networks:
 volumes:
   mysql_run:
   mysql_data:
-  postgres_data:
   minio_data:

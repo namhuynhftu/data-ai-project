@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Single Kafka broker for local dev
   kafka:
@@ -29,10 +27,11 @@ services:
     networks:
       - de_network
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # Kafka UI for monitoring
   kafka-ui:
@@ -44,9 +43,11 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     networks:
       - de_network
+    restart: unless-stopped
 
   # Schema Registry (optional but recommended)
   schema-registry:
@@ -59,9 +60,29 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     networks:
       - de_network
+    restart: unless-stopped
+    
+  postgres_streaming:
+    image: postgres:15
+    container_name: postgres_streaming
+    env_file:
+      - ${LOCAL_ENV}
+    volumes:
+      - ../config/database/postgres/scripts:/docker-entrypoint-initdb.d
+      - postgres_streaming_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - de_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   de_network:
@@ -69,3 +90,4 @@ networks:
 
 volumes:
   kafka_data:
+  postgres_streaming_data:
