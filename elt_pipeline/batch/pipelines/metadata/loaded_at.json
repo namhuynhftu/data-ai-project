@@ -1,6 +1,6 @@
 {
   "metadata_description": "Tracks incremental load timestamps for tables using incremental_by_watermark strategy",
-  "last_updated": "2025-10-31T04:34:48.297859",
+  "last_updated": "2025-11-01T12:43:14.055847",
   "tables": {
     "olist_order_items_dataset": {
       "load_from": null,

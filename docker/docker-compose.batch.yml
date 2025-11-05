@@ -1,14 +1,17 @@
 services:
   mysql_data_source:
     build: 
-      context: ./infra/mysql_db
+      context: ../config/database/mysql
       dockerfile: Dockerfile
     container_name: mysql_data_source
+    env_file:
+      - ${LOCAL_ENV}
     volumes:
       - mysql_data:/var/lib/mysql
       - mysql_run:/var/run/mysqld
       - ~/data_source/brazilian-ecommerce:/var/lib/data
-      - ./infra/mysql_db/certs:/etc/mysql/certs:ro
+      - ../config/database/mysql/certs:/etc/mysql/certs:ro
+      - ../config/database/mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
 
     command: >
       --character-set-server=utf8mb4 
@@ -16,11 +19,6 @@ services:
       --default-authentication-plugin=caching_sha2_password
     ports: 
       - "3306:3306"
-    environment:
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 30s
@@ -33,29 +31,26 @@ services:
   postgres_dw:
     image: postgres:15
     container_name: postgres_dw
+    env_file:
+      - ${LOCAL_ENV}
     volumes:
-      - ./infra/psql_db/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../config/database/postgres/scripts:/docker-entrypoint-initdb.d
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - de_network
 
   minio:
     container_name: data_lake_minio
     image: minio/minio:latest # Or a specific version, e.g., minio/minio:RELEASE.2024-09-26T00-00-00Z
+    env_file:
+      - ${LOCAL_ENV}
     ports:
       - "9000:9000" # S3 API port
       - "9001:9001" # MinIO Console port
     volumes:
       - minio_data:/data # Mount a named volume for persistent data storage
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER} # Replace with your desired username
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD} # Replace with your desired strong password
     command: server --console-address ":9001" /data
     networks:
       - de_network

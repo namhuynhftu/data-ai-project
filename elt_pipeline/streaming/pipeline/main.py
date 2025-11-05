@@ -15,12 +15,13 @@ from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
+
+# Load environment variables from config/app/local.env
+env_path = project_root / "config" / "app" / "local.env"
+load_dotenv(dotenv_path=env_path)
 
 # Setup logging
 logging.basicConfig(
