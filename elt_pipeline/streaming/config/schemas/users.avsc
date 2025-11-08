@@ -1,0 +1,37 @@
+{
+  "type": "record",
+  "name": "User",
+  "namespace": "com.streaming.users",
+  "doc": "User account information and demographics",
+  "fields": [
+    {
+      "name": "user_id",
+      "type": "string",
+      "doc": "Unique user identifier (UUID)"
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "doc": "User's full name"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "doc": "User's email address"
+    },
+    {
+      "name": "address",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "User's physical address"
+    },
+    {
+      "name": "created_at",
+      "type": "string",
+      "doc": "Account creation timestamp (ISO 8601 format)"
+    }
+  ]
+}

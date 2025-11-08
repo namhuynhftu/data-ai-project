@@ -1,0 +1,38 @@
+{
+  "type": "record",
+  "name": "Transaction",
+  "namespace": "com.streaming.transactions",
+  "doc": "Basic transaction records",
+  "fields": [
+    {
+      "name": "transaction_id",
+      "type": "string",
+      "doc": "Unique transaction identifier (UUID)"
+    },
+    {
+      "name": "user_id",
+      "type": "string",
+      "doc": "Associated user identifier (foreign key to users.user_id)"
+    },
+    {
+      "name": "amount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 10,
+        "scale": 2
+      },
+      "doc": "Transaction amount"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "doc": "Currency code (ISO 4217)"
+    },
+    {
+      "name": "timestamp",
+      "type": "string",
+      "doc": "Transaction timestamp (ISO 8601 format)"
+    }
+  ]
+}
