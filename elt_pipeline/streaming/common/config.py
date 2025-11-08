@@ -35,7 +35,24 @@ import logging
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    
+    # Determine which environment file to load
+    # Priority: ENVIRONMENT env var → default to 'development'
+    env_name = os.getenv('ENVIRONMENT', 'development')
+    
+    # Calculate path to config/app/{environment}.env
+    current_file = Path(__file__)
+    project_root = current_file.parent.parent.parent.parent
+    env_file = project_root / 'config' / 'app' / f'{env_name}.env'
+    
+    # Load the environment-specific file
+    if env_file.exists():
+        load_dotenv(env_file)
+        print(f"✅ Loaded environment config from: {env_file}")
+    else:
+        # Fallback to .env in project root or current directory
+        load_dotenv()
+        print(f"⚠️  Environment file not found: {env_file}, using default .env")
 except ImportError:
     pass  # dotenv is optional
 

@@ -40,6 +40,7 @@ help: ## Show this help message
 # ==============================================================================
 docker compose up: ## Start all services (batch + streaming)
 	@echo "Starting all services..."
+	@echo "Export the local environment variables"
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) up -d
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d
 	@echo "All services started successfully!"
