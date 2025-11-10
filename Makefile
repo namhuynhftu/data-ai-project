@@ -38,7 +38,7 @@ help: ## Show this help message
 # ==============================================================================
 # Main Commands - All Services
 # ==============================================================================
-docker compose up: ## Start all services (batch + streaming)
+up: ## Start all services (batch + streaming)
 	@echo "Starting all services..."
 	@echo "Export the local environment variables"
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) up -d
@@ -46,7 +46,7 @@ docker compose up: ## Start all services (batch + streaming)
 	@echo "All services started successfully!"
 	@make status
 
-docker compose down: ## Stop all services
+down: ## Stop all services
 	@echo "Stopping all services..."
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) down

@@ -19,8 +19,8 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# Load environment variables from config/app/local.env
-env_path = project_root / "config" / "app" / "local.env"
+# Load environment variables from config/app/development.env
+env_path = project_root / "config" / "app" / "development.env"
 load_dotenv(dotenv_path=env_path)
 
 # Setup logging
@@ -57,19 +57,19 @@ def test_postgresql_connection():
     logger.info("🔗 Testing PostgreSQL connection...")
     
     try:
-        from elt_pipeline.streaming.ops.load_data_to_psql import load_psql_config
-        from elt_pipeline.streaming.utils.psql_loader import PSQLLoader
+        from elt_pipeline.streaming.ops.postgres_loader.load_data_to_psql import load_psql_config
+        from elt_pipeline.streaming.ops.postgres_loader.load_data_to_psql import PSQLLoader
         from sqlalchemy import text
         
         psql_config = load_psql_config()
-        logger.info(f"   Host: {psql_config['host']}:{psql_config['port']}")
-        logger.info(f"   Database: {psql_config['database']}")
-        logger.info(f"   Schema: {psql_config['schema']}")
-        
+        logger.info(f"Host: {psql_config['host']}:{psql_config['port']}")
+        logger.info(f"Database: {psql_config['database']}")
+        logger.info(f"Schema: {psql_config['schema']}")
+
         # Test connection
         psql_loader = PSQLLoader(psql_config)
         engine = psql_loader.get_db_connection()
-        
+
         # Test with proper SQLAlchemy connection
         with engine.connect() as connection:
             result = connection.execute(text("SELECT version();"))
@@ -89,7 +89,8 @@ def run_production_pipeline():
     logger.info("=" * 60)
     
     try:
-        from elt_pipeline.streaming.ops.load_relational_data import load_all_relational_tables
+        # Import from correct location - ops not utils
+        from elt_pipeline.streaming.ops.postgres_loader.load_relational_data import load_all_relational_tables
         
         # Pipeline configuration (Demo with 100 records)
         total_records = 100
