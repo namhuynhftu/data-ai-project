@@ -1,68 +1,70 @@
 services:
   # Single Kafka broker for local dev
   kafka:
-    image: apache/kafka:3.9.0
+    image: confluentinc/cp-kafka:7.4.0
     container_name: kafka_broker
     ports:
-      - "9092:9092"    # Internal Docker access
-      - "29092:29092"  # External host access
+      - "9092:9092"
+      - "29092:29092" # Host access port
     environment:
+      # Configure listeners for both docker and host communication
+      KAFKA_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT"
+
+      # Settings required for KRaft mode
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      
-      # Configure listeners for both docker and host communication
-      # PLAINTEXT (9092): Internal Docker communication
-      # PLAINTEXT_HOST (29092): External host machine access
-      # CONTROLLER (9093): KRaft controller
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092,CONTROLLER://kafka:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+
       # Listener to use for broker-to-broker communication
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      
-      # Single node cluster settings
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      # Required for a single node cluster
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      # Extras
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      
-      # Production best practice: Control topic creation explicitly
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-      
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
       CLUSTER_ID: "xUl_ExjdQaSZB9OGK7wHYg"
+
     volumes:
       - kafka_data:/var/lib/kafka/data
-    networks:
-      - de_network
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "kafka-topics --bootstrap-server kafka:9092 --list > /dev/null 2>&1",
+        ]
       interval: 30s
-      timeout: 10s
       retries: 10
       start_period: 60s
+      timeout: 10s
+    networks:
+      - kafka_network
     restart: unless-stopped
 
   # Kafka UI for monitoring and debugging
-  kafka-ui:
-    image: provectuslabs/kafka-ui:v0.7.2
-    container_name: kafka_ui
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.0.0
+    container_name: kafdrop_ui
     platform: linux/amd64  # for Apple Silicon compatibility
     ports:
-      - "8080:8080"
+      - "9005:9005"
     environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      # Use internal Docker listener (standard port 9092)
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      KAFKA_BROKERCONNECT: kafka:9092
+      JVM_OPTS: "-Xms32M -Xmx64M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+      SERVER_PORT: "9005"
+      SCHEMAREGISTRY_CONNECT: http://schema-registry:8081
     depends_on:
       kafka:
         condition: service_healthy
     networks:
-      - de_network
+      - kafka_network
     restart: unless-stopped
+
 
   # Schema Registry for Avro schema management
   schema-registry:
@@ -80,7 +82,7 @@ services:
       kafka:
         condition: service_healthy
     networks:
-      - de_network
+      - kafka_network
     restart: unless-stopped
     
   postgres_streaming:
@@ -106,7 +108,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
-      - de_network
+      - kafka_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d streaming_db"]
       interval: 10s
@@ -116,11 +118,10 @@ services:
 
   # Debezium Connect for CDC
   debezium:
-    image: debezium/connect:2.5
-    container_name: debezium_connect
     build:
-      context: .
-      dockerfile: docker/Dockerfile.debezium
+      context: ../docker/dockerfiles
+      dockerfile: Dockerfile.debezium
+    container_name: debezium_connect
     ports:
       - "8083:8083"
     environment:
@@ -133,18 +134,20 @@ services:
       CONFIG_STORAGE_REPLICATION_FACTOR: 1
       OFFSET_STORAGE_REPLICATION_FACTOR: 1
       STATUS_STORAGE_REPLICATION_FACTOR: 1
-      # Use JSON converters (Avro requires additional plugins)
-      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      KEY_CONVERTER_SCHEMAS_ENABLE: "false"
-      VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      # Use Avro with Confluent Schema Registry
+      KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
     depends_on:
       kafka:
         condition: service_healthy
       postgres_streaming:
         condition: service_healthy
+      schema-registry:
+        condition: service_started
     networks:
-      - de_network
+      - kafka_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/"]
       interval: 30s
@@ -152,10 +155,11 @@ services:
       retries: 5
       start_period: 60s
     restart: unless-stopped
-
   # Apache Flink for stream processing
   flink-jobmanager:
-    image: flink:1.18-java11
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.flink
     container_name: flink_jobmanager
     ports:
       - "8082:8081"  # Flink Web UI (avoiding conflict with Schema Registry)
@@ -166,11 +170,13 @@ services:
         jobmanager.rpc.address: flink-jobmanager
         parallelism.default: 2
     networks:
-      - de_network
+      - kafka_network
     restart: unless-stopped
 
   flink-taskmanager:
-    image: flink:1.18-java11
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.flink
     container_name: flink_taskmanager
     depends_on:
       - flink-jobmanager
@@ -182,13 +188,13 @@ services:
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 2
     networks:
-      - de_network
+      - kafka_network
     restart: unless-stopped
 
 networks:
-  de_network:
+  kafka_network:
     driver: bridge
-    name: de_network
+    name: kafka_network
 
 volumes:
   kafka_data:

@@ -83,16 +83,16 @@ class StreamingConfig:
         self.streaming_root = Path(__file__).parent.parent
         self.config_dir = self.streaming_root / "config"
         self.schema_dir = self.config_dir / "schemas"
-        self.is_production = os.getenv('ENVIRONMENT', 'development')
+        self.is_production = os.getenv('ENVIRONMENT')
     
     # Kafka Configuration
     @staticmethod
     def get_kafka_bootstrap_servers() -> str:
-        return os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka_broker:9092')
+        return os.getenv('KAFKA_BOOTSTRAP_SERVERS')
     
     @staticmethod
     def get_schema_registry_url() -> str:
-        return os.getenv('SCHEMA_REGISTRY_URL', 'http://schema_registry:8081')
+        return os.getenv('SCHEMA_REGISTRY_URL')
     
     def get_producer_config(self, client_id: Optional[str] = None) -> KafkaProducerConfig:
         return KafkaProducerConfig(

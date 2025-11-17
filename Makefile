@@ -52,7 +52,29 @@ down: ## Stop all services
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) down
 	@echo "All services stopped"
 
-restart: down up ## Restart all services
+restart-begin: 
+	@echo "Restarting all services..."
+	@echo "Stopping all services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down
+	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) down
+	@echo "All services stopped"
+	@echo "Export the local environment variables"
+	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) up -d
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d
+	@echo "All services started successfully!"
+	@echo "All services restarted"
+	
+restart-build: 
+	@echo "Restarting all services..."
+	@echo "Stopping all services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down -v
+	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) down -v
+	@echo "All services stopped"
+	@echo "Export the local environment variables"
+	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) up -d --build
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d --build
+	@echo "All services started successfully!"
+	@echo "All services restarted"
 
 build: ## Rebuild all services
 	@echo "Building all services..."
@@ -88,10 +110,21 @@ streaming-up: ## Start streaming services only
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d
 	@echo "Streaming services started"
 
+streaming-up-build: ## Start streaming services only
+	@echo "Starting streaming services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d --build
+	@echo "Streaming services started"
+
 streaming-down: ## Stop streaming services only
 	@echo "Stopping streaming services..."
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down
 	@echo "Streaming services stopped"
+
+streaming-restart:
+	@cho "Restarting streaming services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down -v 
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d --build
+	@echo "Streaming services restarted"
 
 streaming-logs: ## View streaming services logs
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) logs -f

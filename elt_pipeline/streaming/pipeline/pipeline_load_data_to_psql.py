@@ -74,18 +74,18 @@ def test_postgresql_connection():
         with engine.connect() as connection:
             result = connection.execute(text("SELECT version();"))
             version = result.fetchone()[0]
-            logger.info(f"✅ PostgreSQL connection successful: {version}")
+            logger.info(f"PostgreSQL connection successful: {version}")
         
         return True
         
     except Exception as e:
-        logger.error(f"❌ PostgreSQL connection failed: {str(e)}")
-        logger.error("💡 Please ensure PostgreSQL is running and environment variables are correct")
+        logger.error(f"PostgreSQL connection failed: {str(e)}")
+        logger.error("Please ensure PostgreSQL is running and environment variables are correct")
         return False
 
 def run_production_pipeline():
     """Run the complete production pipeline"""
-    logger.info("🚀 Starting Production Streaming Pipeline")
+    logger.info("Starting Production Streaming Pipeline")
     logger.info("=" * 60)
     
     try:
@@ -131,39 +131,39 @@ def run_production_pipeline():
         
         # Final summary
         logger.info("\n" + "=" * 60)
-        logger.info("📈 PIPELINE COMPLETION SUMMARY")
+        logger.info("PIPELINE COMPLETION SUMMARY")
         logger.info("=" * 60)
         
-        logger.info(f"✅ Total records processed: {pipeline_stats['total_rows_loaded']}")
-        logger.info(f"📦 Operation completed successfully")
-        logger.info(f"🎯 Success rate: {pipeline_stats['chunks_successful']}/{pipeline_stats['chunks_processed']} operations")
-        logger.info(f"⏱️  Total duration: {total_duration:.2f} seconds")
+        logger.info(f"Total records processed: {pipeline_stats['total_rows_loaded']}")
+        logger.info(f"Operation completed successfully")
+        logger.info(f"Success rate: {pipeline_stats['chunks_successful']}/{pipeline_stats['chunks_processed']} operations")
+        logger.info(f"Total duration: {total_duration:.2f} seconds")
         
         if total_duration > 0:
             overall_throughput = pipeline_stats['total_rows_loaded'] / total_duration
-            logger.info(f"🚀 Overall throughput: {overall_throughput:.0f} records/second")
+            logger.info(f"Overall throughput: {overall_throughput:.0f} records/second")
         
         if pipeline_stats["chunks_failed"] > 0:
-            logger.warning(f"⚠️  {pipeline_stats['chunks_failed']} chunks failed")
-            logger.info("💡 Check logs above for specific error details")
+            logger.warning(f"{pipeline_stats['chunks_failed']} chunks failed")
+            logger.info("Check logs above for specific error details")
         
         success_rate = pipeline_stats['chunks_successful'] / pipeline_stats['chunks_processed'] * 100
         if success_rate >= 90:
-            logger.info("🎉 Pipeline completed successfully!")
+            logger.info("Pipeline completed successfully!")
         elif success_rate >= 50:
-            logger.warning("⚠️  Pipeline completed with some failures")
+            logger.warning("Pipeline completed with some failures")
         else:
-            logger.error("❌ Pipeline completed with significant failures")
+            logger.error("Pipeline completed with significant failures")
         
         return pipeline_stats
         
     except Exception as e:
-        logger.error(f"❌ Pipeline failed: {str(e)}")
+        logger.error(f"Pipeline failed: {str(e)}")
         raise
 
 def main():
     """Main function"""
-    logger.info("🚀 Streaming Data Pipeline - Production Mode")
+    logger.info("Streaming Data Pipeline - Production Mode")
     logger.info("=" * 60)
     
     # Pre-flight checks
@@ -179,20 +179,20 @@ def main():
         
         # Exit with appropriate code
         if pipeline_stats['chunks_failed'] == 0:
-            logger.info("\n🎉 All operations completed successfully!")
+            logger.info("All operations completed successfully!")
             sys.exit(0)
         elif pipeline_stats['chunks_successful'] > 0:
-            logger.warning("\n⚠️  Pipeline completed with some failures")
+            logger.warning("\n Pipeline completed with some failures")
             sys.exit(1)
         else:
-            logger.error("\n❌ Pipeline failed completely")
+            logger.error("\nPipeline failed completely")
             sys.exit(2)
             
     except KeyboardInterrupt:
-        logger.warning("\n⚠️  Pipeline interrupted by user")
+        logger.warning("\nPipeline interrupted by user")
         sys.exit(130)
     except Exception as e:
-        logger.error(f"\n❌ Pipeline failed with error: {str(e)}")
+        logger.error(f"\nPipeline failed with error: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":

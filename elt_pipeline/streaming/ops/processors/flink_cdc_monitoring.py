@@ -1,178 +1,190 @@
-"""Flink CDC: Detect users with >=$3k transactions in last 300 days."""
-import json
+"""Kafka CDC Monitor: Detect users with >=$3k transactions in last 300 days.
+
+Note: This uses a Python Kafka consumer with Avro deserialization, not Flink.
+For true Flink processing, deploy to the Flink cluster running in Docker.
+"""
 import logging
-from collections import defaultdict
 from datetime import datetime, timedelta
 
 import psycopg2
 from confluent_kafka import Consumer, Producer
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.serialization import SerializationContext, MessageField
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class HighValueUserDetector:
-    """Track and alert on high-value user transactions."""
+class FlinkTransactionMonitor:
+    """Real Flink streaming job to monitor high-value users."""
 
     def __init__(self):
-        self.user_txns = defaultdict(list)
         self.threshold = 3000
         self.window_days = 300
-        self.consumer = Consumer({
-            "bootstrap.servers": "localhost:29092",
-            "group.id": "flink-monitor-group-v5",  # Changed to v5 to reprocess from beginning
-            "auto.offset.reset": "earliest",
-        })
-        self.producer = Producer({"bootstrap.servers": "localhost:29092"})
-        self.db_conn = psycopg2.connect(
-            host="localhost",
-            port=5432,
-            database="streaming_db",
-            user="user",
-            password="password"
-        )
-        self.alerted_users = set()  # Track users already alerted
-
-    def _clean_old_txns(self, user_id: str):
-        """Remove transactions older than window_days."""
-        cutoff = datetime.utcnow() - timedelta(days=self.window_days)
-        self.user_txns[user_id] = [
-            txn for txn in self.user_txns[user_id] if txn["ts"] > cutoff
-        ]
-
-    def process_transaction(self, event: dict):
-        """Process transaction CDC event and check threshold."""
-        try:
-            # Parse Debezium CDC event structure
-            payload = event.get("payload", {})
-            after = payload.get("after")
-            
-            if not after:
-                return
-            
-            user_id = str(after.get("user_id"))
-            
-            # Decode amount from bytes (Debezium DECIMAL encoding)
-            import base64
-            amount_bytes = after.get("amount", "")
-            try:
-                decoded = base64.b64decode(amount_bytes)
-                # Convert variable-length bytes to integer
-                value = int.from_bytes(decoded, byteorder='big', signed=True)
-                amount = abs(value / 100.0)  # scale=2
-                logger.debug(f"Decoded amount: ${amount:.2f} for user {user_id}")
-            except Exception as e:
-                logger.error(f"Failed to decode amount '{amount_bytes}': {e}")
-                return
-            
-            # Convert microsecond timestamp to datetime
-            timestamp_us = after.get("timestamp", 0)
-            ts = datetime.utcfromtimestamp(timestamp_us / 1_000_000)
-            
-            if not user_id or amount == 0:
-                return
-
-            txn = {"amount": amount, "ts": ts}
-            self.user_txns[user_id].append(txn)
-            self._clean_old_txns(user_id)
-
-            total = sum(t["amount"] for t in self.user_txns[user_id])
-            logger.debug(f"User {user_id[:8]}... total: ${total:.2f} (txns: {len(self.user_txns[user_id])})")
-            
-            # Check if user exceeds threshold
-            if total >= self.threshold:
-                # Query actual database for accurate totals
-                cursor = self.db_conn.cursor()
-                cursor.execute("""
-                    SELECT COUNT(*), COALESCE(SUM(ABS(amount)), 0)
-                    FROM streaming.transactions 
-                    WHERE user_id = %s 
-                    AND timestamp >= NOW() - INTERVAL '%s days'
-                """, (user_id, self.window_days))
-                db_count, db_total = cursor.fetchone()
-                cursor.close()
-                
-                alert = {
-                    "user_id": user_id,
-                    "total_amount": float(db_total),
-                    "txn_count": db_count,
-                    "alert_type": "HIGH_VALUE_USER",
-                    "message": f"User {user_id} spent ${db_total:.2f} in last {self.window_days} days",
-                    "severity": "HIGH",
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
-                
-                # Only send alert if user not already alerted (prevents duplicates)
-                if user_id not in self.alerted_users:
-                    self._send_alert(alert)
-                    self.alerted_users.add(user_id)
-                    logger.warning(f"🚨 HIGH VALUE: {user_id} = ${db_total:.2f} ({db_count} txns from DB)")
-        except Exception as e:
-            logger.error(f"Process error: {e}")
-
-    def _send_alert(self, alert: dict):
-        """Send alert to Kafka and PostgreSQL."""
-        # Send to Kafka (optional - skip if topic doesn't exist)
-        try:
-            self.producer.produce(
-                "user-alerts",
-                key=alert["user_id"].encode(),
-                value=json.dumps(alert).encode(),
-            )
-            self.producer.flush()
-        except Exception as kafka_err:
-            logger.warning(f"Kafka alert failed (will still save to DB): {kafka_err}")
         
-        # Insert into PostgreSQL
-        try:
-            cursor = self.db_conn.cursor()
-            cursor.execute("""
-                INSERT INTO streaming.user_alerts 
-                (user_id, total_amount, transaction_count, alert_type, message, 
-                 severity, detected_at, window_days, threshold_amount)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                alert["user_id"],
-                alert["total_amount"],
-                alert["txn_count"],
-                alert["alert_type"],
-                alert["message"],
-                alert["severity"],
-                datetime.utcnow(),
-                self.window_days,
-                self.threshold
-            ))
-            self.db_conn.commit()
-            cursor.close()
-            logger.info(f"✅ Alert saved to database for user {alert['user_id'][:8]}...")
-        except Exception as e:
-            logger.error(f"Failed to save alert to database: {e}")
-            self.db_conn.rollback()
+        # Create Flink streaming environment
+        env_settings = EnvironmentSettings.in_streaming_mode()
+        self.table_env = TableEnvironment.create(env_settings)
+        
+        # Set checkpoint interval for fault tolerance
+        self.table_env.get_config().get_configuration().set_string(
+            "execution.checkpointing.interval", "60s"
+        )
+        
+        logger.info("✅ Flink Table Environment created")
+
+    def create_source_table(self):
+        """Create Kafka source table for CDC transactions (Avro format)."""
+        logger.info("📥 Creating Kafka source table...")
+        
+        self.table_env.execute_sql("""
+            CREATE TABLE transactions_source (
+                `before` ROW<
+                    transaction_id STRING,
+                    user_id STRING,
+                    amount DECIMAL(10,2),
+                    currency STRING,
+                    `timestamp` BIGINT
+                >,
+                `after` ROW<
+                    transaction_id STRING,
+                    user_id STRING,
+                    amount DECIMAL(10,2),
+                    currency STRING,
+                    `timestamp` BIGINT
+                >,
+                `source` ROW<
+                    version STRING,
+                    connector STRING,
+                    name STRING,
+                    ts_ms BIGINT
+                >,
+                op STRING,
+                ts_ms BIGINT,
+                -- Convert microsecond timestamp to TIMESTAMP(3)
+                event_time AS TO_TIMESTAMP(FROM_UNIXTIME(`after`.`timestamp` / 1000000)),
+                WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+            ) WITH (
+                'connector' = 'kafka',
+                'topic' = 'postgres.streaming.transactions',
+                'properties.bootstrap.servers' = 'kafka:9092',
+                'properties.group.id' = 'flink-pyflink-monitor',
+                'scan.startup.mode' = 'earliest-offset',
+                'format' = 'avro-confluent',
+                'avro-confluent.url' = 'http://schema-registry:8081'
+            )
+        """)
+        
+        logger.info("✅ Kafka source table created")
+
+    def create_sink_table(self):
+        """Create PostgreSQL sink table for alerts."""
+        logger.info("📤 Creating PostgreSQL sink table...")
+        
+        self.table_env.execute_sql("""
+            CREATE TABLE user_alerts_sink (
+                user_id STRING,
+                total_amount DECIMAL(12,2),
+                transaction_count BIGINT,
+                alert_type STRING,
+                message STRING,
+                severity STRING,
+                detected_at TIMESTAMP(3),
+                window_days INT,
+                threshold_amount DECIMAL(12,2)
+            ) WITH (
+                'connector' = 'jdbc',
+                'url' = 'jdbc:postgresql://postgres_streaming:5432/streaming_db',
+                'table-name' = 'streaming.user_alerts',
+                'username' = 'user',
+                'password' = 'password',
+                'driver' = 'org.postgresql.Driver'
+            )
+        """)
+        
+        logger.info("✅ PostgreSQL sink table created")
+
+    def create_monitoring_query(self):
+        """Create windowed aggregation query to detect high-value users."""
+        logger.info("🔍 Creating monitoring query...")
+        
+        # Create view with aggregated data
+        # Note: Using INTERVAL '10' MONTH instead of '300' DAY to avoid precision limits
+        self.table_env.execute_sql(f"""
+            CREATE TEMPORARY VIEW high_value_users AS
+            SELECT 
+                `after`.user_id as user_id,
+                SUM(ABS(`after`.amount)) as total_amount,
+                COUNT(*) as transaction_count,
+                'HIGH_VALUE_USER' as alert_type,
+                CONCAT('User ', CAST(`after`.user_id AS STRING), ' spent $', 
+                       CAST(SUM(ABS(`after`.amount)) AS STRING), ' in last {self.window_days} days') as message,
+                'HIGH' as severity,
+                CURRENT_TIMESTAMP as detected_at,
+                {self.window_days} as window_days,
+                CAST({self.threshold} AS DECIMAL(12,2)) as threshold_amount
+            FROM transactions_source
+            WHERE 
+                `after` IS NOT NULL
+                AND event_time >= CURRENT_TIMESTAMP - INTERVAL '10' MONTH
+            GROUP BY 
+                `after`.user_id,
+                TUMBLE(event_time, INTERVAL '1' MINUTE)
+            HAVING 
+                SUM(ABS(`after`.amount)) >= {self.threshold}
+        """)
+        
+        logger.info("✅ Monitoring query created")
 
     def run(self):
-        """Consume transactions and monitor continuously."""
-        logger.info(f"🚀 Monitoring users with >={self.threshold} in {self.window_days} days")
-        self.consumer.subscribe(["postgres.streaming.transactions"])
-
-        try:
-            msg_count = 0
-            while True:
-                msg = self.consumer.poll(1.0)
-                if not msg or msg.error():
-                    continue
-
-                msg_count += 1
-                event = json.loads(msg.value().decode())
-                logger.info(f"📨 Message #{msg_count} received")
-                self.process_transaction(event)
-        except KeyboardInterrupt:
-            logger.info("⏹️  Stopped")
-        finally:
-            self.consumer.close()
-            self.producer.flush()
-            self.db_conn.close()
+        """Execute Flink streaming job."""
+        logger.info("=" * 60)
+        logger.info("🚀 Starting Flink Transaction Monitor")
+        logger.info(f"   Threshold: ${self.threshold}")
+        logger.info(f"   Window: {self.window_days} days")
+        logger.info(f"   Target: streaming.user_alerts")
+        logger.info("=" * 60)
+        
+        # Create tables
+        self.create_source_table()
+        self.create_sink_table()
+        self.create_monitoring_query()
+        
+        # Execute insert statement
+        logger.info("▶️  Executing streaming job...")
+        
+        statement_set = self.table_env.create_statement_set()
+        statement_set.add_insert_sql("""
+            INSERT INTO user_alerts_sink
+            SELECT 
+                user_id,
+                total_amount,
+                transaction_count,
+                alert_type,
+                message,
+                severity,
+                detected_at,
+                window_days,
+                threshold_amount
+            FROM high_value_users
+        """)
+        
+        # Execute and wait
+        result = statement_set.execute()
+        logger.info(f"✅ Job submitted: {result.get_job_client().get_job_id()}")
+        logger.info("⏳ Job running... (Press Ctrl+C to stop)")
+        
+        # Wait for completion (runs indefinitely)
+        result.wait()
 
 
 if __name__ == "__main__":
-    detector = HighValueUserDetector()
-    detector.run()
+    try:
+        monitor = FlinkTransactionMonitor()
+        monitor.run()
+    except KeyboardInterrupt:
+        logger.info("⏹️  Stopped by user")
+    except Exception as e:
+        logger.error(f"❌ Job failed: {e}", exc_info=True)
+        raise

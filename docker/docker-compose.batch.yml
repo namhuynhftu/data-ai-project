@@ -41,6 +41,7 @@ services:
     command: server --console-address ":9001" /data
     networks:
       - de_network
+      - kafka_network  
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
@@ -52,6 +53,9 @@ networks:
   de_network:
     driver: bridge
     name: de_network
+  kafka_network:
+    driver: bridge
+    name: kafka_network
 
 volumes:
   mysql_run:

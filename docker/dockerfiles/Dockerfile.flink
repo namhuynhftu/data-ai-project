@@ -1,0 +1,20 @@
+FROM flink:1.18-java11
+
+# Download required connector JARs to /opt/flink/lib/
+# These will be automatically loaded by Flink on startup
+
+# Kafka connector for Flink SQL (includes Kafka source/sink)
+RUN wget -P /opt/flink/lib/ \
+    https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.0.2-1.18/flink-sql-connector-kafka-3.0.2-1.18.jar
+
+# Flink SQL Avro with Schema Registry (fat JAR with all dependencies)
+RUN wget -P /opt/flink/lib/ \
+    https://repo1.maven.org/maven2/org/apache/flink/flink-sql-avro-confluent-registry/1.18.0/flink-sql-avro-confluent-registry-1.18.0.jar
+
+# JDBC connector for Flink SQL
+RUN wget -P /opt/flink/lib/ \
+    https://repo1.maven.org/maven2/org/apache/flink/flink-connector-jdbc/3.1.2-1.18/flink-connector-jdbc-3.1.2-1.18.jar
+
+# PostgreSQL driver for JDBC connector
+RUN wget -P /opt/flink/lib/ \
+    https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar
