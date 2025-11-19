@@ -45,16 +45,16 @@ def check_environment():
             missing_vars.append(var)
     
     if missing_vars:
-        logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
-        logger.error("💡 Please ensure your .env file is configured properly")
+        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+        logger.error("Please ensure your .env file is configured properly")
         return False
     
-    logger.info("✅ Environment configuration is complete")
+    logger.info("Environment configuration is complete")
     return True
 
 def test_postgresql_connection():
     """Test PostgreSQL database connection"""
-    logger.info("🔗 Testing PostgreSQL connection...")
+    logger.info("Testing PostgreSQL connection...")
     
     try:
         from elt_pipeline.streaming.ops.postgres_loader.load_data_to_psql import load_psql_config
@@ -96,7 +96,7 @@ def run_production_pipeline():
         total_records = 100
         chunk_size = 10
         
-        logger.info(f"📋 Pipeline Configuration:")
+        logger.info(f"Pipeline Configuration:")
         logger.info(f"   Using relational data loading approach")
         logger.info(f"   Chunk size: {chunk_size}")
         logger.info(f"   Target: all relational tables")

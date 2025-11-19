@@ -35,10 +35,10 @@ def main():
     )
     args = parser.parse_args()
 
-    logger.info("=" * 60)
+
     logger.info("Debezium CDC Setup")
     logger.info(f"Snapshot Mode: {args.snapshot_mode}")
-    logger.info("=" * 60)
+
 
     setup = DebeziumSetup(snapshot_mode=args.snapshot_mode)
 

@@ -58,6 +58,7 @@ services:
       SERVER_SERVLET_CONTEXTPATH: "/"
       SERVER_PORT: "9005"
       SCHEMAREGISTRY_CONNECT: http://schema-registry:8081
+
     depends_on:
       kafka:
         condition: service_healthy
@@ -78,6 +79,7 @@ services:
       # Use internal Docker listener (standard port 9092)
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
     depends_on:
       kafka:
         condition: service_healthy
@@ -171,7 +173,13 @@ services:
         parallelism.default: 2
     networks:
       - kafka_network
-    restart: unless-stopped
+    healthcheck:
+    # Healthcheck must start either by 'CMD' or 'CMD-SHELL'
+      test: ["CMD-SHELL", "curl -f http://localhost:8081 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   flink-taskmanager:
     build:

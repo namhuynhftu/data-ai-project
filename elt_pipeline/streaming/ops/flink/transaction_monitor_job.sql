@@ -2,18 +2,19 @@
 -- Aggregates transactions over 300-day window and alerts on >= $3000
 
 -- Source: Kafka CDC transactions (Avro format)
+-- Note: Debezium converts PostgreSQL NUMERIC to STRING in Avro
 CREATE TABLE transactions_source (
     `before` ROW<
         transaction_id STRING,
         user_id STRING,
-        amount DECIMAL(10,2),
+        amount STRING,
         currency STRING,
         `timestamp` BIGINT
     >,
     `after` ROW<
         transaction_id STRING,
         user_id STRING,
-        amount DECIMAL(10,2),
+        amount STRING,
         currency STRING,
         `timestamp` BIGINT
     >,
@@ -31,23 +32,26 @@ CREATE TABLE transactions_source (
     'connector' = 'kafka',
     'topic' = 'postgres.streaming.transactions',
     'properties.bootstrap.servers' = 'kafka:9092',
-    'properties.group.id' = 'flink-sql-monitor-v2',
+    'properties.group.id' = 'flink',
     'scan.startup.mode' = 'earliest-offset',
     'format' = 'avro-confluent',
     'avro-confluent.url' = 'http://schema-registry:8081'
 );
 
 -- Sink: PostgreSQL user_alerts table
+-- Note: user_id must be cast to UUID in the SELECT to match PostgreSQL schema
 CREATE TABLE user_alerts_sink (
     user_id STRING,
     total_amount DECIMAL(12,2),
-    transaction_count BIGINT,
+    transaction_count INT,
     alert_type STRING,
     message STRING,
     severity STRING,
     detected_at TIMESTAMP(3),
     window_days INT,
     threshold_amount DECIMAL(12,2),
+    created_at TIMESTAMP(3),
+    updated_at TIMESTAMP(3),
     PRIMARY KEY (user_id) NOT ENFORCED
 ) WITH (
     'connector' = 'jdbc',
@@ -61,24 +65,26 @@ CREATE TABLE user_alerts_sink (
 );
 
 -- Insert job: Aggregate and filter high-value users
--- Using 1-hour tumbling windows for periodic emission
+-- Using simple GROUP BY for continuous aggregation (upsert mode)
+-- Each new transaction triggers an update to the user's aggregate in PostgreSQL
 INSERT INTO user_alerts_sink
 SELECT
     `after`.user_id as user_id,
-    SUM(ABS(`after`.amount)) as total_amount,
-    COUNT(*) as transaction_count,
+    SUM(ABS(CAST(`after`.amount AS DECIMAL(10,2)))) as total_amount,
+    CAST(COUNT(*) AS INT) as transaction_count,
     'HIGH_VALUE_USER' as alert_type,
     CONCAT('User ', CAST(`after`.user_id AS STRING), ' spent $',
-           CAST(SUM(ABS(`after`.amount)) AS STRING), ' total') as message,
+           CAST(SUM(ABS(CAST(`after`.amount AS DECIMAL(10,2)))) AS STRING), ' total') as message,
     'HIGH' as severity,
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP(3)) as detected_at,
     300 as window_days,
-    CAST(3000.00 AS DECIMAL(12,2)) as threshold_amount
+    CAST(3000.00 AS DECIMAL(12,2)) as threshold_amount,
+    CAST(CURRENT_TIMESTAMP AS TIMESTAMP(3)) as created_at,
+    CAST(CURRENT_TIMESTAMP AS TIMESTAMP(3)) as updated_at
 FROM transactions_source
 WHERE
     `after` IS NOT NULL
+    AND `after`.user_id IS NOT NULL
+    AND `after`.amount IS NOT NULL
 GROUP BY
-    `after`.user_id,
-    TUMBLE(proc_time, INTERVAL '1' MINUTE)
-HAVING
-    SUM(ABS(`after`.amount)) >= 3000;
+    `after`.user_id;

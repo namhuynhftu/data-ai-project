@@ -17,18 +17,13 @@ def submit_flink_sql_job():
     sql_file = Path(__file__).parent / "transaction_monitor_job.sql"
     
     if not sql_file.exists():
-        logger.error(f"❌ SQL file not found: {sql_file}")
+        logger.error(f"SQL file not found: {sql_file}")
         return False
-    
-    logger.info("=" * 60)
-    logger.info("🚀 Submitting Flink SQL Job to Cluster")
-    logger.info("=" * 60)
+    logger.info("Submitting Flink SQL Job to Cluster")
     
     # Read SQL file
     with open(sql_file, 'r') as f:
         sql_content = f.read()
-    
-    logger.info(f"📄 SQL Job:\n{sql_content[:200]}...")
     
     # Execute SQL in Flink SQL client via docker exec
     # Note: We use 'flink-jobmanager' container which has SQL client
@@ -38,7 +33,7 @@ def submit_flink_sql_job():
     ]
     
     try:
-        logger.info("📤 Submitting to Flink cluster...")
+        logger.info("Submitting to Flink cluster...")
         
         result = subprocess.run(
             command,
@@ -52,20 +47,20 @@ def submit_flink_sql_job():
         stderr = result.stderr.decode('utf-8', errors='ignore')
         
         if result.returncode == 0:
-            logger.info("✅ SQL job submitted successfully!")
+            logger.info("SQL job submitted successfully!")
             logger.info(f"Output:\n{stdout}")
             return True
         else:
-            logger.error(f"❌ Job submission failed (exit code: {result.returncode})")
+            logger.error(f"Job submission failed (exit code: {result.returncode})")
             logger.error(f"STDOUT:\n{stdout}")
             logger.error(f"STDERR:\n{stderr}")
             return False
             
     except subprocess.TimeoutExpired:
-        logger.error("❌ Submission timed out after 30 seconds")
+        logger.error("Submission timed out after 30 seconds")
         return False
     except Exception as e:
-        logger.error(f"❌ Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}")
         return False
 
 
@@ -80,35 +75,29 @@ def check_flink_status():
         )
         
         if result.returncode == 0 and result.stdout.strip():
-            logger.info("✅ Flink cluster is running:")
+            logger.info("Flink cluster is running:")
             for line in result.stdout.strip().split('\n'):
                 logger.info(f"   {line}")
             return True
         else:
-            logger.error("❌ Flink cluster is not running")
-            logger.error("   Start with: docker-compose -f docker/docker-compose.streaming.yml up -d")
+            logger.error("Flink cluster is not running")
+            logger.error("Start with: docker-compose -f docker/docker-compose.streaming.yml up -d")
             return False
             
     except Exception as e:
-        logger.error(f"❌ Failed to check Flink status: {e}")
+        logger.error(f"Failed to check Flink status: {e}")
         return False
 
 
 if __name__ == "__main__":
     logger.info("Flink SQL Job Submission")
-    logger.info("=" * 60)
-    
     # Check Flink is running
     if not check_flink_status():
         exit(1)
     
     # Submit SQL job
     if submit_flink_sql_job():
-        logger.info("=" * 60)
-        logger.info("✅ Job submitted! Check Flink UI at http://localhost:8081")
-        logger.info("=" * 60)
+        logger.info("Job submitted! Check Flink UI at http://localhost:8082")
     else:
-        logger.error("=" * 60)
-        logger.error("❌ Job submission failed")
-        logger.error("=" * 60)
+        logger.error("Job submission failed")
         exit(1)

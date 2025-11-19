@@ -1,4 +1,4 @@
-from elt_pipeline.streaming.ops.sink.kafka_to_minio_sink import KafkaToMinIOSink
+from elt_pipeline.streaming.ops.sink.kafka_sink_manager import KafkaToMinIOSink
 if __name__ == "__main__":
     sink = KafkaToMinIOSink(
         topics=[

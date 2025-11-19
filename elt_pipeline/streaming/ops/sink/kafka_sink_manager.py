@@ -82,7 +82,7 @@ class KafkaToMinIOSink:
 
     def run(self):
         """Consume and store CDC events continuously."""
-        logger.info(f"Kafka→MinIO sink: {self.topics}")
+        logger.info(f"Kafka to MinIO sink: {self.topics}")
         self.consumer.subscribe(self.topics)
         count = 0
         
