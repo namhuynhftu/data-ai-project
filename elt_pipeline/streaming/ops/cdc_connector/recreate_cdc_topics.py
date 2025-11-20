@@ -22,6 +22,7 @@ def main():
     success_topic_creation = []
     fail_topic_creation = []
     for topic in cdc_topics:
+        manager.delete_topic(topic)
         if manager.create_topic(topic, partitions=3, replication=1):
             success_count += 1
             success_topic_creation.append(topic)

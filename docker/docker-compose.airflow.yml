@@ -1,6 +1,6 @@
 x-airflow-common: &airflow-common
   build:
-    context: .
+    context: ../docker/dockerfiles
     dockerfile: Dockerfile.airflow
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -19,15 +19,15 @@ x-airflow-common: &airflow-common
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     AIRFLOW_CONFIG: "/opt/airflow/config/airflow.cfg"
   volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./config:/opt/airflow/config
-    - ./plugins:/opt/airflow/plugins
-    - ./requirements.txt:/requirements.txt
-    - ./.secret:/opt/airflow/.secret
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/config:/opt/airflow/config
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./airflow/requirements.txt:/requirements.txt
+    - ./airflow/.secret:/opt/airflow/.secret
   user: "${AIRFLOW_UID:-50000}:0"
   networks:
-    - kafka_network
+    - de_network
   depends_on: &airflow-common-depends-on
     redis:
       condition: service_healthy
@@ -41,6 +41,8 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
+    ports:
+      - "5433:5432"
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
@@ -50,7 +52,7 @@ services:
       start_period: 5s
     restart: always
     networks:
-      - kafka_network
+      - de_network
 
   redis:
     image: redis:7.2-bookworm
@@ -64,7 +66,7 @@ services:
       start_period: 30s
     restart: always
     networks:
-      - kafka_network
+      - de_network
 
   airflow-apiserver:
     <<: *airflow-common
@@ -251,5 +253,5 @@ volumes:
   postgres-db-volume:
 
 networks:
-  kafka_network:
-    driver: bridge
+  de_network:
+    external: true

@@ -1,103 +1,70 @@
-"""
-Submit Flink SQL job to Flink cluster using SQL Client in Docker.
 
-This script executes SQL via Flink's SQL client running in the jobmanager container.
-"""
-import subprocess
-import logging
-from pathlib import Path
+import json
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from flink_manager import FlinkJobManager
 
+def main():
+    """CLI interface for Flink Job Manager."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Flink Job Manager CLI")
+    parser.add_argument("--host", default="localhost", help="Flink JobManager host")
+    parser.add_argument("--port", type=int, default=8082, help="Flink REST API port")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    
+    # List command
+    subparsers.add_parser("list", help="List all jobs")
+    subparsers.add_parser("list-running", help="List running jobs")
+    subparsers.add_parser("list-failed", help="List failed jobs")
 
-def submit_flink_sql_job():
-    """Submit Flink SQL job using docker exec."""
+    # Submit command
+
+    submit_parser = subparsers.add_parser("submit", help="Submit SQL job")
+    submit_parser.add_argument("sql_file", help="Path to SQL file")
+    submit_parser.add_argument("--name", help="Job name")
     
-    sql_file = Path(__file__).parent / "transaction_monitor_job.sql"
+    # Cancel command
+    cancel_parser = subparsers.add_parser("cancel", help="Cancel a job")
+    cancel_parser.add_argument("job_id", help="Job ID to cancel")
+    cancel_parser.add_argument("--savepoint", action="store_true", help="Create savepoint")
     
-    if not sql_file.exists():
-        logger.error(f"SQL file not found: {sql_file}")
-        return False
-    logger.info("Submitting Flink SQL Job to Cluster")
+    # Monitor command
+    monitor_parser = subparsers.add_parser("monitor", help="Monitor a job")
+    monitor_parser.add_argument("job_id", help="Job ID to monitor")
+    monitor_parser.add_argument("--interval", type=int, default=5, help="Check interval")
+    monitor_parser.add_argument("--duration", type=int, default=60, help="Monitor duration")
     
-    # Read SQL file
-    with open(sql_file, 'r') as f:
-        sql_content = f.read()
+    args = parser.parse_args()
     
-    # Execute SQL in Flink SQL client via docker exec
-    # Note: We use 'flink-jobmanager' container which has SQL client
-    command = [
-        "docker", "exec", "-i", "flink_jobmanager",
-        "/opt/flink/bin/sql-client.sh", "-f", "/dev/stdin"
-    ]
+    manager = FlinkJobManager(jobmanager_host=args.host, jobmanager_port=args.port)
     
-    try:
-        logger.info("Submitting to Flink cluster...")
+    if args.command == "list":
+        jobs = manager.list_jobs()
+        print(json.dumps(jobs, indent=2))
+    
+    elif args.command == "list-running":
+        jobs = manager.get_running_jobs()
+        print(json.dumps(jobs, indent=2))
         
-        result = subprocess.run(
-            command,
-            input=sql_content.encode('utf-8'),
-            capture_output=True,
-            text=False,
-            timeout=30
-        )
+    elif args.command == "health":
+        health = manager.check_cluster_health()
+        print(json.dumps(health, indent=2))
         
-        stdout = result.stdout.decode('utf-8', errors='ignore')
-        stderr = result.stderr.decode('utf-8', errors='ignore')
+    elif args.command == "submit":
+        result = manager.submit_sql_job(args.sql_file, args.name)
+        print(json.dumps(result, indent=2))
         
-        if result.returncode == 0:
-            logger.info("SQL job submitted successfully!")
-            logger.info(f"Output:\n{stdout}")
-            return True
-        else:
-            logger.error(f"Job submission failed (exit code: {result.returncode})")
-            logger.error(f"STDOUT:\n{stdout}")
-            logger.error(f"STDERR:\n{stderr}")
-            return False
-            
-    except subprocess.TimeoutExpired:
-        logger.error("Submission timed out after 30 seconds")
-        return False
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        return False
-
-
-def check_flink_status():
-    """Check if Flink cluster is running."""
-    try:
-        result = subprocess.run(
-            ["docker", "ps", "--filter", "name=flink", "--format", "{{.Names}}\t{{.Status}}"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+    elif args.command == "cancel":
+        result = manager.cancel_job(args.job_id, savepoint=args.savepoint)
+        print(json.dumps(result, indent=2))
         
-        if result.returncode == 0 and result.stdout.strip():
-            logger.info("Flink cluster is running:")
-            for line in result.stdout.strip().split('\n'):
-                logger.info(f"   {line}")
-            return True
-        else:
-            logger.error("Flink cluster is not running")
-            logger.error("Start with: docker-compose -f docker/docker-compose.streaming.yml up -d")
-            return False
-            
-    except Exception as e:
-        logger.error(f"Failed to check Flink status: {e}")
-        return False
+    elif args.command == "monitor":
+        manager.monitor_job(args.job_id, args.interval, args.duration)
+        
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":
-    logger.info("Flink SQL Job Submission")
-    # Check Flink is running
-    if not check_flink_status():
-        exit(1)
-    
-    # Submit SQL job
-    if submit_flink_sql_job():
-        logger.info("Job submitted! Check Flink UI at http://localhost:8082")
-    else:
-        logger.error("Job submission failed")
-        exit(1)
+    main()

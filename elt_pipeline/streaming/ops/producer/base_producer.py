@@ -39,19 +39,6 @@ class ProducerStats:
 class BaseProducer(ABC):
     """
     Abstract base producer.
-    
-    Subclasses must implement generate_record().
-    
-    Usage:
-        class UserProducer(BaseProducer):
-            def __init__(self):
-                super().__init__(entity='users')
-            
-            def generate_record(self) -> Dict[str, Any]:
-                return {'user_id': '123', 'name': 'John'}
-        
-        producer = UserProducer()
-        producer.run(max_messages=100)
     """
     
     def __init__(self, entity: str, rate_limit: Optional[float] = None, max_errors: int = 10):
@@ -100,12 +87,7 @@ class BaseProducer(ABC):
     
     @abstractmethod
     def generate_record(self) -> Dict[str, Any]:
-        """
-        Generate a record (must be implemented by subclass).
-        
-        Returns:
-            Dictionary matching the entity's Avro schema
-        """
+        """Generate a record (must be implemented by subclass)."""
         pass
     
     def produce_record(self, record: Dict[str, Any]) -> bool:
@@ -145,13 +127,7 @@ class BaseProducer(ABC):
         )
     
     def run(self, max_messages: Optional[int] = None, stats_interval: int = 1000):
-        """
-        Run producer loop.
-        
-        Args:
-            max_messages: Max messages to produce (None = unlimited)
-            stats_interval: Log stats every N messages
-        """
+        """Run producer loop."""
         self.logger.info(f"Starting producer (max: {max_messages or 'unlimited'})")
         
         try:

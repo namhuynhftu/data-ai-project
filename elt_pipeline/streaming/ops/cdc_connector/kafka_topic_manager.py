@@ -45,4 +45,23 @@ class KafkaTopicManager:
         except Exception as e:
             print(f"Error creating topic {topic_name}: {e}")
             return False
+    
+    def delete_topic(self, topic_name: str) -> bool:
+        """Delete a single Kafka topic."""
+        cmd = (
+            f"{self.kafka_cmd} --bootstrap-server {self.bootstrap_server} "
+            f"--delete --topic {topic_name}"
+        )
 
+        try:
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, check=False
+            )
+            if result.returncode == 0:
+                print(f"Deleted topic: {topic_name}")
+                return True
+            print(f"Failed to delete {topic_name}: {result.stderr.strip()}")
+            return False
+        except Exception as e:
+            print(f"Error deleting topic {topic_name}: {e}")
+            return False

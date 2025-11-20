@@ -18,11 +18,12 @@
 # Docker Compose files
 BATCH_COMPOSE := docker/docker-compose.batch.yml
 STREAMING_COMPOSE := docker/docker-compose.streaming.yml
+AIRFLOW_COMPOSE := docker/docker-compose.airflow.yml
 
 # Project names
 BATCH_PROJECT := batch
 STREAMING_PROJECT := streaming
-
+AIRFLOW_PROJECT := airflow
 # ==============================================================================
 # Help
 # ==============================================================================
@@ -43,6 +44,7 @@ up: ## Start all services (batch + streaming)
 	@echo "Export the local environment variables"
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) up -d
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) up -d
 	@echo "All services started successfully!"
 	@make status
 
@@ -50,6 +52,7 @@ down: ## Stop all services
 	@echo "Stopping all services..."
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) down
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) down
 	@echo "All services stopped"
 
 restart-begin: 
@@ -57,10 +60,12 @@ restart-begin:
 	@echo "Stopping all services..."
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) down
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) down
 	@echo "All services stopped"
 	@echo "Export the local environment variables"
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) up -d
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) up -d
 	@echo "All services started successfully!"
 	@echo "All services restarted"
 	
@@ -69,17 +74,42 @@ restart-build:
 	@echo "Stopping all services..."
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down -v
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) down -v
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) down -v
 	@echo "All services stopped"
 	@echo "Export the local environment variables"
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) up -d --build
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d --build
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) up -d --build
 	@echo "All services started successfully!"
 	@echo "All services restarted"
 
 build: ## Rebuild all services
 	@echo "Building all services..."
 	@docker compose -f $(BATCH_COMPOSE) -p $(BATCH_PROJECT) build
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) build
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) build
 	@echo "Build complete"
+
+# ==============================================================================
+# Airflow Orchestrator Commands
+# ==============================================================================
+airflow-up: ## Start airflow services only
+	@echo "Starting Orchestration services..."
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) up -d
+	@echo "Airflow services started"
+
+airflow-down: ## Stop airflow services only
+	@echo "Stopping airflow services..."
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) down
+	@echo "Airflow services stopped"
+
+airflow-logs: ## View airflow services logs
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) logs -f
+airflow-build: ## Rebuild airflow services
+	@docker compose -f $(AIRFLOW_COMPOSE) -p $(AIRFLOW_PROJECT) build
+
+airflow-restart: airflow-down airflow-up ## Restart airflow services
+
 
 # ==============================================================================
 # Batch Pipeline Commands

@@ -101,6 +101,9 @@ class DebeziumSetup:
                 # Decimal handling
                 "decimal.handling.mode": "string",
                 # Time handling
-                "time.precision.mode": "adaptive"
+                "time.precision.mode": "adaptive",
+                # Task configuration
+                "tasks.max": "1",
+                "cleanup.policy": "compact"
             },
         }
