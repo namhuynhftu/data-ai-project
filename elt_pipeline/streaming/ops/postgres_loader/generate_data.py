@@ -27,14 +27,6 @@ def generate_fake_data_op(
 ) -> Dict[str, Any]:
     """
     Generate fake data operation
-    
-    Args:
-        table_name: Name of the table to generate data for
-        num_records: Number of records to generate
-        metadata_config_path: Path to metadata configuration file
-    
-    Returns:
-        Dictionary containing generated data and metadata
     """
     try:
         # Load metadata configuration

@@ -1,0 +1,13 @@
+# Additional packages for E2E pipeline
+# These are added on top of the base Airflow 3.0.6 image
+
+# Fix provider version conflicts
+apache-airflow-providers-fab>=2.5.0
+apache-airflow-providers-common-messaging>=2.0.0
+
+# Packages needed for the E2E pipeline
+minio>=7.0.0
+mysql-connector-python>=8.0.0
+dbt-snowflake>=1.9.0
+boto3>=1.40.0
+snowflake-connector-python>=3.18.0

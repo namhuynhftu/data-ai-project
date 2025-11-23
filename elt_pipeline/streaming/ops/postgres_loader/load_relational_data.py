@@ -20,8 +20,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-from elt_pipeline.streaming.ops.generate_data import generate_relational_dataset_op
-from elt_pipeline.streaming.ops.load_data_to_psql import load_data_to_psql_op, load_psql_config
+# Fixed imports - use ops.postgres_loader not utils.postgres_loader
+from elt_pipeline.streaming.ops.postgres_loader.generate_data import generate_relational_dataset_op
+from elt_pipeline.streaming.ops.postgres_loader.load_data_to_psql import load_data_to_psql_op, load_psql_config
 
 # Setup logging
 logging.basicConfig(
