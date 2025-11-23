@@ -1,7 +1,7 @@
 x-airflow-common: &airflow-common
   build:
-    context: ../docker/dockerfiles
-    dockerfile: Dockerfile.airflow
+    context: ..
+    dockerfile: docker/dockerfiles/Dockerfile.airflow
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
@@ -13,18 +13,24 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-apiserver:8080/execution/"
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__API_AUTH__JWT_SECRET: "airflow"
+    AIRFLOW__CORE__TEST_CONNECTION: "Enabled"
     # Timezone Configuration
     AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Bangkok
     TZ: Asia/Bangkok
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     AIRFLOW_CONFIG: "/opt/airflow/config/airflow.cfg"
   volumes:
-    - ./airflow/dags:/opt/airflow/dags
-    - ./airflow/logs:/opt/airflow/logs
-    - ./airflow/config:/opt/airflow/config
-    - ./airflow/plugins:/opt/airflow/plugins
-    - ./airflow/requirements.txt:/requirements.txt
-    - ./airflow/.secret:/opt/airflow/.secret
+    - ../airflow/dags:/opt/airflow/dags
+    - ../airflow/logs:/opt/airflow/logs
+    - ../airflow/config:/opt/airflow/config
+    - ../airflow/plugins:/opt/airflow/plugins
+    - ../airflow/requirements.txt:/requirements.txt
+    - ../airflow/.secret:/opt/airflow/.secret
+    - ../dwh:/opt/airflow/dwh
+    - ../.dbt:/opt/airflow/.dbt
+    - ../elt_pipeline:/opt/airflow/elt_pipeline
+
   user: "${AIRFLOW_UID:-50000}:0"
   networks:
     - de_network
@@ -36,6 +42,7 @@ x-airflow-common: &airflow-common
 
 services:
   postgres:
+    container_name: airflow_metadata_db
     image: postgres:13
     environment:
       POSTGRES_USER: airflow
@@ -55,6 +62,7 @@ services:
       - de_network
 
   redis:
+    container_name: redis_cache
     image: redis:7.2-bookworm
     expose:
       - 6379
@@ -69,6 +77,7 @@ services:
       - de_network
 
   airflow-apiserver:
+    container_name: airflow_apiserver
     <<: *airflow-common
     command: api-server
     ports:
@@ -86,6 +95,7 @@ services:
         condition: service_completed_successfully
 
   airflow-scheduler:
+    container_name: airflow_scheduler
     <<: *airflow-common
     command: scheduler
     healthcheck:
@@ -101,6 +111,7 @@ services:
         condition: service_completed_successfully
 
   airflow-dag-processor:
+    container_name: airflow_dag_processor
     <<: *airflow-common
     command: dag-processor
     healthcheck:
@@ -120,6 +131,7 @@ services:
         condition: service_completed_successfully
 
   airflow-worker:
+    container_name: airflow_worker
     <<: *airflow-common
     command: celery worker
     healthcheck:
@@ -142,6 +154,7 @@ services:
         condition: service_completed_successfully
 
   airflow-triggerer:
+    container_name: airflow_triggerer
     <<: *airflow-common
     command: triggerer
     healthcheck:
@@ -161,6 +174,7 @@ services:
         condition: service_completed_successfully
 
   airflow-init:
+    container_name: airflow_init
     <<: *airflow-common
     entrypoint: /bin/bash
     command:
@@ -254,4 +268,4 @@ volumes:
 
 networks:
   de_network:
-    external: true
+    name: de_network

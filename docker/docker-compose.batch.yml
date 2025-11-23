@@ -17,6 +17,7 @@ services:
       --character-set-server=utf8mb4 
       --collation-server=utf8mb4_unicode_ci
       --default-authentication-plugin=caching_sha2_password
+      --require_secure_transport=OFF
     ports: 
       - "3306:3306"
     healthcheck:
@@ -51,10 +52,8 @@ services:
     
 networks:
   de_network:
-    driver: bridge
     name: de_network
   kafka_network:
-    driver: bridge
     name: kafka_network
 
 volumes:

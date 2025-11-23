@@ -117,17 +117,19 @@ def load_data_from_snowflake_stage_to_table(extracted_data: Dict[str, Any], stag
         
         with BatchOperation(logger, "stage_to_table", destination="snowflake", table=snowflake_target_table) as op:
             
-            # Create Snowflake configuration for the loader
-            snowflake_config = {
-                "account": os.getenv("SNOWFLAKE_ACCOUNT"),
-                "user": os.getenv("SNOWFLAKE_USER"),
-                "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH"),
-                "private_key_file_pwd": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD"),
-                "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
-                "database": os.getenv("SNOWFLAKE_DATABASE"),
-                "schema": os.getenv("SNOWFLAKE_SCHEMA"),
-                "role": os.getenv("SNOWFLAKE_ROLE")
-            }
+            # Get Snowflake configuration from extracted_data or fallback to env vars
+            snowflake_config = extracted_data.get("snowflake_target_storage", {})
+            if not snowflake_config:
+                snowflake_config = {
+                    "account": os.getenv("SNOWFLAKE_ACCOUNT"),
+                    "user": os.getenv("SNOWFLAKE_USER"),
+                    "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH"),
+                    "private_key_file_pwd": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD"),
+                    "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
+                    "database": os.getenv("SNOWFLAKE_DATABASE"),
+                    "schema": os.getenv("SNOWFLAKE_SCHEMA"),
+                    "role": os.getenv("SNOWFLAKE_ROLE")
+                }
             
             # Initialize SnowflakeLoader
             snowflake_loader = SnowflakeLoader(snowflake_config)
@@ -249,7 +251,8 @@ def _load_via_temp_file(extracted_data: Dict[str, Any], logger) -> Dict[str, Any
             _download_from_minio_to_temp(minio_config, minio_file_info, temp_file_path, logger)
             
             # Load temp file to Snowflake stage
-            stage_result = _load_temp_file_to_snowflake_stage(temp_file_path, snowflake_target_table, logger)
+            snowflake_config = extracted_data.get("snowflake_target_storage", {})
+            stage_result = _load_temp_file_to_snowflake_stage(temp_file_path, snowflake_target_table, snowflake_config, logger)
             
             # Update operation metrics
             op.records_processed = minio_file_info.get("rows_loaded", 0)
@@ -294,31 +297,36 @@ def _download_from_minio_to_temp(minio_config: Dict[str, Any], minio_file_info: 
     )
 
 
-def _load_temp_file_to_snowflake_stage(temp_file_path: Path, table_name: str, logger) -> Dict[str, Any]:
+def _load_temp_file_to_snowflake_stage(temp_file_path: Path, table_name: str, snowflake_config: Dict[str, Any], logger) -> Dict[str, Any]:
     """Load temp file to Snowflake internal stage using PUT command"""
     
-    # Create Snowflake configuration
-    snowflake_config = {
-        "account": os.getenv("SNOWFLAKE_ACCOUNT"),
-        "user": os.getenv("SNOWFLAKE_USER"),
-        "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH"),
-        "private_key_file_pwd": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD"),
-        "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
-        "database": os.getenv("SNOWFLAKE_DATABASE"),
-        "schema": os.getenv("SNOWFLAKE_SCHEMA"),
-        "role": os.getenv("SNOWFLAKE_ROLE")
-    }
+    # Use provided config or fallback to environment variables
+    if not snowflake_config:
+        snowflake_config = {
+            "account": os.getenv("SNOWFLAKE_ACCOUNT"),
+            "user": os.getenv("SNOWFLAKE_USER"),
+            "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PATH"),
+            "private_key_file_pwd": os.getenv("SNOWFLAKE_PRIVATE_KEY_FILE_PWD"),
+            "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE"),
+            "database": os.getenv("SNOWFLAKE_DATABASE"),
+            "schema": os.getenv("SNOWFLAKE_SCHEMA"),
+            "role": os.getenv("SNOWFLAKE_ROLE")
+        }
     
     # Initialize SnowflakeLoader
     snowflake_loader = SnowflakeLoader(snowflake_config)
     conn = snowflake_loader.get_db_connection()
     cursor = conn.cursor()
     
+    # Get database and schema from config
+    database = snowflake_config.get("database")
+    schema = snowflake_config.get("schema", "RAW_DATA")
+    
     try:
         # Create internal stage if not exists
         stage_name = "MINIO_STAGE_SHARED"
         create_stage_sql = f"""
-        CREATE STAGE IF NOT EXISTS {os.getenv("SNOWFLAKE_DATABASE")}.{os.getenv("SNOWFLAKE_SCHEMA")}.{stage_name}
+        CREATE STAGE IF NOT EXISTS {database}.{schema}.{stage_name}
         FILE_FORMAT = (
             TYPE = 'PARQUET'
             USE_LOGICAL_TYPE = TRUE
@@ -347,8 +355,8 @@ def _load_temp_file_to_snowflake_stage(temp_file_path: Path, table_name: str, lo
             "stage_name": stage_name,
             "rows_staged": 0,  # Will be counted during COPY INTO
             "success": True,
-            "database": os.getenv("SNOWFLAKE_DATABASE"),
-            "schema": os.getenv("SNOWFLAKE_SCHEMA"),
+            "database": database,
+            "schema": schema,
             "method": "temp_file_upload",
             "already_loaded_to_table": False,
             "internal_snowflake_path": internal_snowflake_path,
