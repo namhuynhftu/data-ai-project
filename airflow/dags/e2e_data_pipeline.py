@@ -94,13 +94,18 @@ def get_dbt_snowflake_env_vars():
     schedule="0 2 * * *",  # Daily at 2 AM
     start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
     catchup=False,
-    tags=["elt", "batch", "mysql", "minio", "snowflake", "dbt"],
+    tags=["elt", "batch", "mysql", "minio", "snowflake", "dbt", "data-masking"],
     max_active_runs=1,
-    description="End-to-end ELT pipeline from MySQL to Snowflake with dbt transformation",
+    description="End-to-end ELT pipeline from MySQL to Snowflake with dbt transformation and data masking",
 )
 def e2e_batch_elt_pipeline():
     """
-    ### E2E Batch ELT Pipeline
+    ### E2E Batch ELT Pipeline with Data Masking
+    
+    Pipeline applies data masking during extraction:
+    - Sensitive fields (e.g., customer_city, customer_state) are hashed using SHA256
+    - Normalization applied before hashing: trim, lowercase
+    - Masking configuration defined in schema contracts
     """
 
     @task
@@ -197,12 +202,12 @@ def e2e_batch_elt_pipeline():
             validation_results['snowflake'] = {'status': 'failed', 'message': str(e)}
             raise AirflowException(f"Snowflake connection validation failed: {e}")
         
-        print("✅ All connections validated successfully!")
+        print("All connections validated successfully!")
         return validation_results
 
     @task
     def extract_from_mysql(validation_results: dict):
-        """Extract data from MySQL database."""
+        """Extract data from MySQL database with data masking applied."""
         from airflow.hooks.base import BaseHook
         
         # Add batch module to Python path
@@ -225,18 +230,21 @@ def e2e_batch_elt_pipeline():
         extraction_results = []
         for table_config in run_config["tables"]:
             run_config["current_table"] = table_config
+            # Note: Data masking is automatically applied during extraction
+            # based on schema contracts (e.g., customer_city and customer_state are hashed)
             result = extract_data_from_mysql(run_config)
             extraction_results.append({
                 "table": table_config["source_table"],
-                "records": len(result["data"]) if result["data"] is not None else 0
+                "records": len(result["data"]) if result["data"] is not None else 0,
+                "data_masked": True
             })
         
-        print(f"✅ Extracted data from {len(extraction_results)} tables")
+        print(f"Extracted data from {len(extraction_results)} tables with data masking applied")
         return extraction_results
 
     @task
     def load_to_minio(extraction_results: list):
-        """Load extracted data to MinIO (S3-compatible storage)."""
+        """Load extracted data (with masked fields) to MinIO (S3-compatible storage)."""
         from airflow.hooks.base import BaseHook
         
         project_root = Path("/opt/airflow")
@@ -272,16 +280,18 @@ def e2e_batch_elt_pipeline():
         minio_results = []
         for table_config in run_config["tables"]:
             run_config["current_table"] = table_config
+            # Data is extracted with masking applied
             extracted_data = extract_data_from_mysql(run_config)
             result = load_data_to_minio(extracted_data)
             minio_results.append({
                 "table": table_config["source_table"],
                 "bucket": result["bucket"],
                 "file": result["file_name"],
-                "rows": result["rows_loaded"]
+                "rows": result["rows_loaded"],
+                "masked_data_stored": True
             })
         
-        print(f"✅ Loaded {len(minio_results)} tables to MinIO")
+        print(f"Loaded {len(minio_results)} tables to MinIO (masked data)")
         return minio_results
 
     @task
@@ -341,7 +351,7 @@ def e2e_batch_elt_pipeline():
                 "method": result["method"]
             })
         
-        print(f"✅ Loaded {len(stage_results)} tables to Snowflake")
+        print(f"Loaded {len(stage_results)} tables to Snowflake")
         return stage_results
 
     @task

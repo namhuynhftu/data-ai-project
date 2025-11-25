@@ -16,18 +16,18 @@ fi
 source ./airflow/.env
 
 # Check if Airflow is running
-if ! docker compose -f docker/docker-compose.airflow.yml ps | grep -q "airflow-scheduler"; then
-    echo "Error: Airflow is not running. Start it first: docker compose -f docker/docker-compose.airflow.yml up -d"
+if ! docker ps --format '{{.Names}}' | grep -q "airflow_scheduler"; then
+    echo "Error: Airflow is not running. Start it first: docker compose -f docker/docker-compose.airflow.yml -p airflow up -d"
     exit 1
 fi
 
 echo "Setting up MySQL connection: mysql_conn"
 
 # Delete existing connection if it exists
-docker compose -f docker/docker-compose.airflow.yml exec -T airflow-scheduler airflow connections delete mysql_conn 2>/dev/null || true
+docker exec airflow_scheduler airflow connections delete mysql_conn 2>/dev/null || true
 
 # Add new connection with SSL disabled (for local development)
-docker compose -f docker/docker-compose.airflow.yml exec -T airflow-scheduler airflow connections add 'mysql_conn' \
+docker exec airflow_scheduler airflow connections add 'mysql_conn' \
     --conn-type 'mysql' \
     --conn-host "$MYSQL_HOST" \
     --conn-port "$MYSQL_PORT" \

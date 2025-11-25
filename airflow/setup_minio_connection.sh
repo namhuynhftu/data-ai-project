@@ -19,19 +19,19 @@ fi
 source "$SCRIPT_DIR/.env"
 
 # Check if Airflow is running
-if ! docker compose -f docker/docker-compose.airflow.yml ps | grep -q "airflow-scheduler"; then
-    echo "Error: Airflow is not running. Start it first: docker compose -f docker/docker-compose.airflow.yml up -d"
+if ! docker ps --format '{{.Names}}' | grep -q "airflow_scheduler"; then
+    echo "Error: Airflow is not running. Start it first: docker compose -f docker/docker-compose.airflow.yml -p airflow up -d"
     exit 1
 fi
 
 echo "Setting up MinIO connection: minio_conn"
 
 # Delete existing connection if it exists
-docker compose -f docker/docker-compose.airflow.yml exec -T airflow-scheduler airflow connections delete minio_conn 2>/dev/null || true
+docker exec airflow_scheduler airflow connections delete minio_conn 2>/dev/null || true
 
 # Add new MinIO connection
 # MinIO uses S3-compatible API, so we use 'aws' connection type
-docker compose -f docker/docker-compose.airflow.yml exec -T airflow-scheduler airflow connections add 'minio_conn' \
+docker exec airflow_scheduler airflow connections add 'minio_conn' \
     --conn-type 'aws' \
     --conn-login "$MINIO_ACCESS_KEY" \
     --conn-password "$MINIO_SECRET_KEY" \
