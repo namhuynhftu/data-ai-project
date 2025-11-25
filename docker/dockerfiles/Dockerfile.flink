@@ -1,7 +1,32 @@
 FROM flink:1.18-java11
 
+# ============================================
+# Install Python for PyFlink support
+# ============================================
+USER root
+
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip python3-dev && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install PyFlink (must match Flink version)
+RUN pip3 install --no-cache-dir apache-flink==1.18.1
+
+# Create directory for Python jobs
+RUN mkdir -p /opt/flink/usrlib && \
+    chown -R flink:flink /opt/flink/usrlib
+
+USER flink
+
+# Set environment for PyFlink
+ENV PYFLINK_CLIENT_EXECUTABLE=python3
+ENV PYFLINK_PYTHON=python3
+
+# ============================================
 # Download required connector JARs to /opt/flink/lib/
 # These will be automatically loaded by Flink on startup
+# ============================================
 
 # Kafka connector for Flink SQL (includes Kafka source/sink)
 RUN wget -P /opt/flink/lib/ \
