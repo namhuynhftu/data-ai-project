@@ -29,7 +29,7 @@ THRESHOLD_AMOUNT = 3000.00
 BUCKET_SIZE_DAYS = 1  # Daily buckets (30 buckets total)
 KAFKA_BOOTSTRAP = "kafka:9092"
 KAFKA_TOPIC = "postgres.streaming.transactions.json"  # JSON topic from converter
-KAFKA_GROUP_ID = "pyflink-bucketed-30day-v2"  # New group to start fresh
+KAFKA_GROUP_ID = "pyflink-bucketed-30day-v4"  # New group to start fresh
 POSTGRES_URL = "jdbc:postgresql://postgres_streaming:5432/streaming_db"
 POSTGRES_USER = "user"
 POSTGRES_PASSWORD = "password"
@@ -100,11 +100,12 @@ class BucketedRolling30DaySum(KeyedProcessFunction):
         cutoff_day = event_day - WINDOW_SIZE_DAYS
         self._cleanup_old_buckets(cutoff_day)
         
-        # Calculate total sum across all remaining buckets
+        # Calculate total sum only for buckets in the 30-day window
+        # (from cutoff_day to event_day, not including future events)
         total_sum = 0.0
         bucket_count = 0
         for bucket_day, bucket_sum in self.daily_buckets.items():
-            if bucket_day >= cutoff_day:
+            if cutoff_day <= bucket_day <= event_day:
                 total_sum += bucket_sum
                 bucket_count += 1
         

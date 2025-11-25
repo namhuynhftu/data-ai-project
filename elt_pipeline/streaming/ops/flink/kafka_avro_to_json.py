@@ -17,7 +17,7 @@ SOURCE_TOPIC = "postgres.streaming.transactions"
 TARGET_TOPIC = "postgres.streaming.transactions.json"
 KAFKA_BOOTSTRAP = "kafka:9092"
 SCHEMA_REGISTRY = "http://schema-registry:8081"
-CONSUMER_GROUP = "avro-to-json-converter"
+CONSUMER_GROUP = "avro-to-json-converter-v2"
 
 
 def create_avro_consumer():
@@ -146,6 +146,16 @@ def main():
                 if msg_count % 100 == 0:
                     print(f"Converted {msg_count} messages (errors: {error_count})")
                     producer.flush()
+            else:
+                # Log filtered messages for debugging
+                error_count += 1
+                op = avro_value.get('op', 'unknown')
+                after = avro_value.get('after')
+                if after:
+                    user_id = after.get('user_id', 'None')
+                    print(f"Filtered message: op={op}, user_id={user_id}")
+                else:
+                    print(f"Filtered message: op={op}, after=None")
             
             # Flush every 1000 messages
             if msg_count % 1000 == 0:
