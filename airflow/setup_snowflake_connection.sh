@@ -16,7 +16,7 @@ fi
 source ./airflow/.env
 
 # Check if Airflow is running
-if ! docker compose -f docker/docker-compose.airflow.yml ps | grep -q "airflow-scheduler"; then
+if ! docker ps --format '{{.Names}}' | grep -q "airflow_scheduler"; then
     echo "Error: Airflow is not running. Start it first: docker compose -f docker/docker-compose.airflow.yml up -d"
     exit 1
 fi
@@ -33,10 +33,10 @@ PRIVATE_KEY_CONTENT=$(cat "$SNOWFLAKE_PRIVATE_KEY_FILE_PATH" | base64 | tr -d '\
 echo "Setting up Snowflake connection: snowflake_conn"
 
 # Delete existing connection if it exists
-docker compose -f docker/docker-compose.airflow.yml exec -T airflow-scheduler airflow connections delete snowflake_conn 2>/dev/null || true
+docker exec airflow_scheduler airflow connections delete snowflake_conn 2>/dev/null || true
 
 # Add new connection
-docker compose -f docker/docker-compose.airflow.yml exec -T airflow-scheduler airflow connections add 'snowflake_conn' \
+docker exec airflow_scheduler airflow connections add 'snowflake_conn' \
     --conn-type 'snowflake' \
     --conn-login "$SNOWFLAKE_USER" \
     --conn-password "$SNOWFLAKE_PRIVATE_KEY_FILE_PWD" \

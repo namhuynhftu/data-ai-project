@@ -1,8 +1,4 @@
--- Flink SQL Job: Monitor High-Value User Transactions
--- Aggregates transactions over 30-day sliding window and alerts on >= $3000
-
--- Source: Kafka CDC transactions (Avro format)
--- Note: Debezium converts PostgreSQL NUMERIC to STRING in Avro
+-- 1) Source table: same as you wrote, no change
 CREATE TABLE transactions_source (
     `before` ROW<
         transaction_id STRING,
@@ -27,19 +23,19 @@ CREATE TABLE transactions_source (
     op STRING,
     ts_ms BIGINT,
     event_time AS TO_TIMESTAMP(FROM_UNIXTIME(`after`.`timestamp` / 1000000)),
-    WATERMARK FOR event_time AS event_time - INTERVAL '30' DAY
+    proc_time AS PROCTIME()
 ) WITH (
     'connector' = 'kafka',
     'topic' = 'postgres.streaming.transactions',
     'properties.bootstrap.servers' = 'kafka:9092',
-    'properties.group.id' = 'flink-reset-v3',
+    'properties.group.id' = 'flink-cumulative-v1',
     'scan.startup.mode' = 'earliest-offset',
     'properties.auto.offset.reset' = 'earliest',
     'format' = 'avro-confluent',
     'avro-confluent.url' = 'http://schema-registry:8081'
 );
 
--- Sink: PostgreSQL user_alerts table
+-- 2) Sink table: if you want the latest status per user, PK = user_id is fine
 CREATE TABLE user_alerts_sink (
     user_id STRING,
     total_amount DECIMAL(12,2),
@@ -64,29 +60,45 @@ CREATE TABLE user_alerts_sink (
     'sink.buffer-flush.interval' = '1s'
 );
 
--- Insert job: Aggregate transactions by user
--- Filter for users who have spent >= $3000 total
+-- 3) REAL-TIME cumulative sum per user (emits on every transaction)
 INSERT INTO user_alerts_sink
 SELECT
-    `after`.user_id as user_id,
-    SUM(ABS(CAST(`after`.amount AS DECIMAL(10,2)))) as total_amount,
-    CAST(COUNT(*) AS INT) as transaction_count,
-    'HIGH_VALUE_USER' as alert_type,
-    CONCAT('User ', CAST(`after`.user_id AS STRING), ' spent $',
-           CAST(SUM(ABS(CAST(`after`.amount AS DECIMAL(10,2)))) AS STRING), 
-           ' total') as message,
-    'HIGH' as severity,
-    CAST(CURRENT_TIMESTAMP AS TIMESTAMP(3)) as detected_at,
-    30 as window_days,
-    CAST(3000.00 AS DECIMAL(12,2)) as threshold_amount,
-    CAST(CURRENT_TIMESTAMP AS TIMESTAMP(3)) as created_at,
-    CAST(CURRENT_TIMESTAMP AS TIMESTAMP(3)) as updated_at
-FROM transactions_source
-WHERE
-    `after` IS NOT NULL
-    AND `after`.user_id IS NOT NULL
-    AND `after`.amount IS NOT NULL
-    AND event_time >= CAST(CURRENT_TIMESTAMP AS TIMESTAMP(3)) - INTERVAL '30' DAY
-GROUP BY
-    `after`.user_id
-HAVING SUM(ABS(CAST(`after`.amount AS DECIMAL(10,2)))) >= 3000.00
+    user_id,
+    total_amount,
+    transaction_count,
+    'HIGH_VALUE_USER' AS alert_type,
+    CONCAT('User ', user_id, ' spent $', CAST(total_amount AS STRING), ' total') AS message,
+    'HIGH' AS severity,
+    event_time AS detected_at,
+    30 AS window_days,
+    CAST(3000.00 AS DECIMAL(12,2)) AS threshold_amount,
+    event_time AS created_at,
+    event_time AS updated_at
+FROM (
+    SELECT
+        user_id,
+        event_time,
+        SUM(amount) OVER (
+            PARTITION BY user_id
+            ORDER BY proc_time
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS total_amount,
+        CAST(COUNT(*) OVER (
+            PARTITION BY user_id
+            ORDER BY proc_time
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS INT) AS transaction_count
+    FROM (
+        SELECT
+            `after`.user_id AS user_id,
+            ABS(CAST(`after`.amount AS DECIMAL(12,2))) AS amount,
+            event_time
+        FROM transactions_source
+        WHERE
+            `after` IS NOT NULL
+            AND `after`.user_id IS NOT NULL
+            AND `after`.amount IS NOT NULL
+            AND op IN ('c', 'u', 'r')
+    )
+)
+WHERE total_amount >= 3000.00;

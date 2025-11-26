@@ -45,5 +45,20 @@
     "indexes": []
   },
   "estimated_row_count": 99000,
-  "data_classification": "PII"
+  "data_classification": "PII",
+  "data_masking": {
+    "enabled": true,
+    "masked_columns": [
+      {
+        "column_name": "customer_city",
+        "masking_type": "hash",
+        "description": "City name masked using SHA256 hash"
+      },
+      {
+        "column_name": "customer_state",
+        "masking_type": "hash",
+        "description": "State abbreviation masked using SHA256 hash"
+      }
+    ]
+  }
 }

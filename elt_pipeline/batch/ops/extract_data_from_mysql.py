@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 import pandas as pd
+import hashlib
 
 from elt_pipeline.batch.utils.mysql_loader import MySQLLoader
 from elt_pipeline.batch.utils.loaded_at_tracker import get_table_loaded_at, get_incremental_query_filter
@@ -15,14 +16,79 @@ from elt_pipeline.logger_utils import get_mysql_logger, BatchOperation
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# Load environment variables from config/app/local.env
-env_path = project_root / "config" / "app" / "local.env"
+# Load environment variables from config/app/development.env
+env_path = project_root / "config" / "app" / "development.env"
 load_dotenv(dotenv_path=env_path)
 
 
 # Setup centralized logging
 logger = get_mysql_logger()
 
+
+def normalize_and_hash(value: Any) -> str:
+    """
+    Normalize data and apply SHA256 hashing.
+    
+    Normalization steps:
+    1. Convert to string
+    2. Strip leading/trailing whitespace
+    3. Convert to lowercase
+    4. Apply SHA256 hash
+    
+    Args:
+        value: The value to normalize and hash
+        
+    Returns:
+        SHA256 hash of the normalized value
+    """
+    if value is None or pd.isna(value):
+        return None
+    
+    # Convert to string and normalize
+    normalized = str(value).strip().lower()
+    
+    # Apply SHA256 hash
+    hash_object = hashlib.sha256(normalized.encode('utf-8'))
+    return hash_object.hexdigest()
+
+
+def apply_data_masking(df: pd.DataFrame, schema_contract: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Apply data masking to DataFrame based on schema contract.
+    
+    Args:
+        df: DataFrame to apply masking to
+        schema_contract: Schema contract containing masking rules
+        
+    Returns:
+        DataFrame with masked columns
+    """
+    masking_config = schema_contract.get("data_masking", {})
+    
+    if not masking_config.get("enabled", False):
+        logger.info("Data masking not enabled for this table")
+        return df
+    
+    masked_columns = masking_config.get("masked_columns", [])
+    
+    for mask_config in masked_columns:
+        column_name = mask_config.get("column_name")
+        masking_type = mask_config.get("masking_type")
+        
+        if column_name not in df.columns:
+            logger.warning(f"Column {column_name} not found in DataFrame, skipping masking")
+            continue
+        
+        if masking_type == "hash":
+            logger.info(f"Applying hash masking to column: {column_name}")
+            df[column_name] = df[column_name].apply(normalize_and_hash)
+        elif masking_type == "partial":
+            # Placeholder for partial masking implementation
+            logger.info(f"Partial masking not yet implemented for column: {column_name}")
+        else:
+            logger.warning(f"Unknown masking type '{masking_type}' for column: {column_name}")
+    
+    return df
 
 
 def load_run_config(config_path: str) -> Dict[str, Any]:
@@ -85,6 +151,7 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
         logger.info("Loaded schema contract", table=table_name, schema_path=str(schema_path))
         # Extract column names from the schema contract
         selected_columns = [col["name"] for col in schema_contract.get("columns", [])]
+        
     
     with BatchOperation(logger, "extraction", source="mysql", table=table_name) as op:
         # Initialize MySQL loader with database parameters
@@ -139,6 +206,11 @@ def extract_data_from_mysql(run_config) -> Dict[str, Any]:
         
         # Extract data
         pd_data = mysql_loader.extract_data(sql)
+        
+        # Apply data masking based on schema contract
+        if pd_data is not None and not pd_data.empty:
+            pd_data = apply_data_masking(pd_data, schema_contract)
+            logger.info("Data masking applied", table=table_name)
         
         # Update operation metrics
         op.records_processed = len(pd_data) if pd_data is not None else 0

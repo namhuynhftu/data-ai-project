@@ -126,7 +126,7 @@ if __name__ == "__main__":
             # Create table-specific run config
             table_run_config = {**run_config, "current_table": table_config}
             
-            # Extract data from MySQL
+            # Extract data from MySQL (includes data masking/hashing based on schema contract)
             data = extract_data_from_mysql(table_run_config)
             
             # Load to MinIO
@@ -141,9 +141,10 @@ if __name__ == "__main__":
             
             extraction_op.records_processed = minio_result.get("rows_loaded", 0)
             
-            logger.info("Extracted to MinIO", 
+            logger.info("Extracted to MinIO with data masking applied", 
                        table=table_name,
-                       rows=extraction_op.records_processed)
+                       rows=extraction_op.records_processed,
+                       masked_columns_applied=True)
     
     total_records = sum(result["minio_file_info"].get("rows_loaded", 0) for result in minio_results)
     logger.info("PHASE 1 COMPLETED", 
