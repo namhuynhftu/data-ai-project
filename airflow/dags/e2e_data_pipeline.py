@@ -63,32 +63,6 @@ def get_snowflake_config(snow_conn):
     }
 
 
-def get_dbt_snowflake_env_vars():
-    """
-    Get dbt Snowflake environment variables from Airflow connections.x
-    """
-    # Get the Snowflake connection
-    conn = BaseHook.get_connection("snowflake_default")
-    extra = json.loads(conn.extra) if conn.extra else {}
-
-    # Decode the base64-encoded private key
-    private_key_b64 = extra.get("private_key_content", "")
-    private_key = base64.b64decode(private_key_b64).decode("utf-8") if private_key_b64 else ""
-
-    return {
-        "SNOWFLAKE_ACCOUNT": extra.get("account", ""),
-        "SNOWFLAKE_USER": conn.login or "",
-        "SNOWFLAKE_PRIVATE_KEY_FILE_PWD": conn.password or "",
-        "SNOWFLAKE_ROLE": extra.get("role", ""),
-        "SNOWFLAKE_WAREHOUSE": extra.get("warehouse", ""),
-        "SNOWFLAKE_DATABASE": extra.get("database", ""),
-        "SNOWFLAKE_SCHEMA": conn.schema or "",
-        "SNOWFLAKE_PRIVATE_KEY": private_key,
-        "DBT_PROFILES_DIR": "/opt/airflow/.dbt",
-        "DBT_PROJECT_DIR": "/opt/airflow/dwh",
-        "PATH": "/home/airflow/.local/bin:" + os.environ.get("PATH", ""),
-    }
-
 @dag(
     dag_id="e2e_batch_elt_pipeline",
     schedule="0 2 * * *",  # Daily at 2 AM
@@ -101,11 +75,6 @@ def get_dbt_snowflake_env_vars():
 def e2e_batch_elt_pipeline():
     """
     ### E2E Batch ELT Pipeline with Data Masking
-    
-    Pipeline applies data masking during extraction:
-    - Sensitive fields (e.g., customer_city, customer_state) are hashed using SHA256
-    - Normalization applied before hashing: trim, lowercase
-    - Masking configuration defined in schema contracts
     """
 
     @task
@@ -206,8 +175,11 @@ def e2e_batch_elt_pipeline():
         return validation_results
 
     @task
-    def extract_from_mysql(validation_results: dict):
-        """Extract data from MySQL database with data masking applied."""
+    def extract_and_load_pipeline(validation_results: dict):
+        """
+        Combined ETL pipeline: Extract from MySQL -> Load to MinIO -> Load to Snowflake.
+        Uses single connections for each system to optimize performance.
+        """
         from airflow.hooks.base import BaseHook
         
         # Add batch module to Python path
@@ -215,110 +187,24 @@ def e2e_batch_elt_pipeline():
         sys.path.insert(0, str(project_root))
         
         from elt_pipeline.batch.ops.extract_data_from_mysql import extract_data_from_mysql, load_run_config
-        
-        # Get MySQL connection and config
-        mysql_conn = BaseHook.get_connection("mysql_conn")
-        mysql_config = get_mysql_config(mysql_conn)
-        
-        # Load configuration
-        config_path = project_root / "elt_pipeline" / "batch" / "pipelines" / "metadata" / "table_metadata.json"
-        run_config = load_run_config(str(config_path))
-        
-        # Override MySQL connection details from Airflow connection
-        run_config["data_source_config"] = mysql_config
-        
-        extraction_results = []
-        for table_config in run_config["tables"]:
-            run_config["current_table"] = table_config
-            # Note: Data masking is automatically applied during extraction
-            # based on schema contracts (e.g., customer_city and customer_state are hashed)
-            result = extract_data_from_mysql(run_config)
-            extraction_results.append({
-                "table": table_config["source_table"],
-                "records": len(result["data"]) if result["data"] is not None else 0,
-                "data_masked": True
-            })
-        
-        print(f"Extracted data from {len(extraction_results)} tables with data masking applied")
-        return extraction_results
-
-    @task
-    def load_to_minio(extraction_results: list):
-        """Load extracted data (with masked fields) to MinIO (S3-compatible storage)."""
-        from airflow.hooks.base import BaseHook
-        
-        project_root = Path("/opt/airflow")
-        sys.path.insert(0, str(project_root))
-        
         from elt_pipeline.batch.ops.load_data_to_minio import load_data_to_minio
-        from elt_pipeline.batch.ops.extract_data_from_mysql import load_run_config, extract_data_from_mysql
-        
-        # Get connections and configs
-        mysql_conn = BaseHook.get_connection("mysql_conn")
-        minio_conn = BaseHook.get_connection("minio_conn")
-        
-        mysql_config = get_mysql_config(mysql_conn)
-        minio_config = get_minio_config(minio_conn)
-        
-        config_path = project_root / "elt_pipeline" / "batch" / "pipelines" / "metadata" / "table_metadata.json"
-        run_config = load_run_config(str(config_path))
-        
-        # Override connection details from Airflow connections
-        run_config["data_source_config"] = mysql_config
-        
-        # Configure MinIO target storage
-        run_config["minio_target_storage"] = {
-            "endpoint": minio_config["endpoint"],
-            "access_key": minio_config["access_key"],
-            "secret_key": minio_config["secret_key"],
-            "bucket": minio_config["bucket_name"],
-            "default_format": "parquet",
-            "default_compression": "snappy",
-            "secure": False
-        }
-        
-        minio_results = []
-        for table_config in run_config["tables"]:
-            run_config["current_table"] = table_config
-            # Data is extracted with masking applied
-            extracted_data = extract_data_from_mysql(run_config)
-            result = load_data_to_minio(extracted_data)
-            minio_results.append({
-                "table": table_config["source_table"],
-                "bucket": result["bucket"],
-                "file": result["file_name"],
-                "rows": result["rows_loaded"],
-                "masked_data_stored": True
-            })
-        
-        print(f"Loaded {len(minio_results)} tables to MinIO (masked data)")
-        return minio_results
-
-    @task
-    def load_to_snowflake_stage(minio_results: list):
-        """Load data from MinIO to Snowflake internal stage."""
-        from airflow.hooks.base import BaseHook
-        
-        project_root = Path("/opt/airflow")
-        sys.path.insert(0, str(project_root))
-        
         from elt_pipeline.batch.ops.load_data_to_snowflake import load_minio_to_snowflake_via_stage_direct
-        from elt_pipeline.batch.ops.extract_data_from_mysql import load_run_config, extract_data_from_mysql
-        from elt_pipeline.batch.ops.load_data_to_minio import load_data_to_minio
         
-        # Get connections and configs
+        # Get all connections once
         mysql_conn = BaseHook.get_connection("mysql_conn")
         minio_conn = BaseHook.get_connection("minio_conn")
         snow_conn = BaseHook.get_connection("snowflake_conn")
         
+        # Get configurations
         mysql_config = get_mysql_config(mysql_conn)
         minio_config = get_minio_config(minio_conn)
         snowflake_config = get_snowflake_config(snow_conn)
         
+        # Load table metadata
         config_path = project_root / "elt_pipeline" / "batch" / "pipelines" / "metadata" / "table_metadata.json"
         run_config = load_run_config(str(config_path))
         
-        # Override connection details from Airflow connections
+        # Configure all connections in run_config
         run_config["data_source_config"] = mysql_config
         run_config["minio_target_storage"] = {
             "endpoint": minio_config["endpoint"],
@@ -331,31 +217,188 @@ def e2e_batch_elt_pipeline():
         }
         run_config["snowflake_target_storage"] = snowflake_config
         
-        stage_results = []
-        for table_config in run_config["tables"]:
+        # Process each table through the entire pipeline
+        pipeline_results = []
+        
+        print("=" * 70)
+        print("Starting E2E Data Pipeline")
+        print("=" * 70)
+        
+        for idx, table_config in enumerate(run_config["tables"], 1):
+            table_name = table_config["source_table"]
+            
+            print(f"\n[{idx}/{len(run_config['tables'])}] Processing: {table_name}")
+            print("-" * 70)
+            
             run_config["current_table"] = table_config
             
-            # Extract and load to MinIO first
+            # Step 1: Extract from MySQL with data masking
+            print(f"  Extracting from MySQL (with masking)...")
             extracted_data = extract_data_from_mysql(run_config)
+            row_count = len(extracted_data["data"]) if extracted_data["data"] is not None else 0
+            print(f"  Extracted {row_count:,} rows")
+            
+            # Step 2: Load to MinIO
+            print(f"  Loading to MinIO data lake...")
             minio_result = load_data_to_minio(extracted_data)
+            print(f"  Loaded to {minio_result['bucket']}/{minio_result['file_name']}")
             
-            # Add MinIO file info to extracted data
+            # Step 3: Load to Snowflake via internal stage
+            print(f"  Loading to Snowflake...")
             extracted_data["minio_file_info"] = minio_result
+            snowflake_result = load_minio_to_snowflake_via_stage_direct(extracted_data)
+            print(f"  Loaded {snowflake_result['total_rows_loaded']:,} rows to Snowflake")
             
-            # Load to Snowflake via stage
-            result = load_minio_to_snowflake_via_stage_direct(extracted_data)
-            stage_results.append({
-                "table": table_config["source_table"],
-                "rows": result["total_rows_loaded"],
-                "stage": result["stage_name"],
-                "method": result["method"]
+            pipeline_results.append({
+                "table": table_name,
+                "extracted_rows": row_count,
+                "minio_file": minio_result["file_name"],
+                "snowflake_rows": snowflake_result["total_rows_loaded"],
+                "stage": snowflake_result["stage_name"],
+                "method": snowflake_result["method"]
             })
         
-        print(f"Loaded {len(stage_results)} tables to Snowflake")
-        return stage_results
+        print("\n" + "=" * 70)
+        print(f"Pipeline completed for {len(pipeline_results)} tables")
+        print("=" * 70)
+        
+        return pipeline_results
+    
 
     @task
-    def dbt_build(stage_results: list):
+    def cleanup_and_validate_data(pipeline_results: list):
+        """
+        Combined task to clean up internal stage and validate data in Snowflake.
+        Uses a single connection for both operations to optimize performance.
+        """
+        from airflow.hooks.base import BaseHook
+        import snowflake.connector
+        
+        # Get Snowflake connection
+        snow_conn = BaseHook.get_connection("snowflake_conn")
+        snowflake_config = get_snowflake_config(snow_conn)
+        
+        # Load table metadata to get list of tables
+        project_root = Path("/opt/airflow")
+        config_path = project_root / "elt_pipeline" / "batch" / "pipelines" / "metadata" / "table_metadata.json"
+        
+        import json
+        with open(config_path, "r") as f:
+            metadata = json.load(f)
+        
+        tables = metadata.get("tables", [])
+        
+        try:
+            # Connect to Snowflake once for both cleanup and validation
+            conn = snowflake.connector.connect(
+                account=snowflake_config["account"],
+                user=snowflake_config["user"],
+                private_key_file=snowflake_config["private_key_file"],
+                private_key_file_pwd=snowflake_config["private_key_file_pwd"],
+                warehouse=snowflake_config["warehouse"],
+                database=snowflake_config["database"],
+                schema=snowflake_config["schema"],
+                role=snowflake_config["role"],
+                authenticator='SNOWFLAKE_JWT'
+            )
+            cursor = conn.cursor()
+            
+            # ========== STEP 1: Clean up internal stage ==========
+            print("\n" + "=" * 70)
+            print("STEP 1: Cleaning up internal stage files")
+            print("=" * 70)
+            
+            cleanup_results = []
+            stage_name = pipeline_results[0]["stage"] if pipeline_results else "MINIO_STAGE_SHARED"
+            
+            for result in pipeline_results:
+                table_name = result["table"].lower()
+                
+                try:
+                    remove_query = f"REMOVE @{snowflake_config['database']}.{snowflake_config['schema']}.{stage_name}/{table_name}/"
+                    cursor.execute(remove_query)
+                    removed = cursor.fetchall()
+                    files_removed = len(removed)
+                    
+                    cleanup_results.append({
+                        "table": table_name,
+                        "files_removed": files_removed,
+                        "status": "cleaned"
+                    })
+                    
+                    print(f"Cleaned {files_removed} file(s) from stage: {table_name}")
+                except Exception as e:
+                    print(f"  ⚠ Warning: Failed to clean stage for {table_name}: {e}")
+                    cleanup_results.append({
+                        "table": table_name,
+                        "files_removed": 0,
+                        "status": "failed",
+                        "error": str(e)
+                    })
+            
+            print(f"\nStage cleanup completed for {len(cleanup_results)} tables")
+            
+            # ========== STEP 2: Validate data in tables ==========
+            print("\n" + "=" * 70)
+            print("STEP 2: Validating data in Snowflake tables")
+            print("=" * 70)
+            
+            validation_results = []
+            failed_tables = []
+            
+            for table_config in tables:
+                table_name = table_config["targets"]["snowflake"]["target_table"].upper()
+                
+                # Check row count using COUNT(1)
+                query = f"SELECT COUNT(1) FROM {snowflake_config['database']}.{snowflake_config['schema']}.{table_name}"
+                cursor.execute(query)
+                row_count = cursor.fetchone()[0]
+                
+                validation_result = {
+                    "table": table_name,
+                    "row_count": row_count,
+                    "status": "passed" if row_count > 0 else "failed"
+                }
+                validation_results.append(validation_result)
+                
+                if row_count == 0:
+                    failed_tables.append(table_name)
+                
+                status_icon = "✓" if row_count > 0 else "✗"
+                status_text = "PASSED" if row_count > 0 else "FAILED"
+                print(f"  {status_icon} {table_name}: {row_count:,} rows - {status_text}")
+            
+            cursor.close()
+            conn.close()
+            
+            print("\n" + "=" * 70)
+            
+            # Fail pipeline if any table has 0 rows
+            if failed_tables:
+                error_msg = f"Data validation failed: {', '.join(failed_tables)} have 0 rows"
+                print(f"✗ {error_msg}")
+                raise AirflowException(error_msg)
+            
+            print(f"All {len(validation_results)} tables passed validation")
+            print("=" * 70 + "\n")
+            
+            return {
+                "cleanup": cleanup_results,
+                "validation": validation_results
+            }
+            
+        except snowflake.connector.Error as e:
+            raise AirflowException(f"Snowflake operation error: {e}")
+        finally:
+            # Clean up temp private key file
+            if os.path.exists(snowflake_config["private_key_file"]):
+                try:
+                    os.unlink(snowflake_config["private_key_file"])
+                except Exception:
+                    pass
+
+    @task
+    def dbt_build(validation_results: list):
         """
         Transform data in Snowflake using dbt.
         Environment variables are set from Airflow Snowflake connection.
@@ -401,13 +444,11 @@ def e2e_batch_elt_pipeline():
 
     # Define task dependencies
     validation = validate_connections()
-    extraction = extract_from_mysql(validation)
-    minio_load = load_to_minio(extraction)
-    snowflake_load = load_to_snowflake_stage(minio_load)
-    transformation = dbt_build(snowflake_load)
-    
-    # Set up the pipeline flow
-    validation >> extraction >> minio_load >> snowflake_load >> transformation
+    etl_pipeline = extract_and_load_pipeline(validation)
+    cleanup_validation = cleanup_and_validate_data(etl_pipeline)
+    transformation = dbt_build(cleanup_validation)
+
+    validation >> etl_pipeline >> cleanup_validation >> transformation
 
 
 # Create the DAG instance
