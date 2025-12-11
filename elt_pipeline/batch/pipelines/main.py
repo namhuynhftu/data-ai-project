@@ -38,19 +38,19 @@ def get_strategy_filter():
         choice = input("Enter your choice (1-4): ").strip()
         
         if choice == "1":
-            print("✓ Selected: All tables with default strategies\n")
+            print("Selected: All tables with default strategies\n")
             return "all"
         elif choice == "2":
-            print("✓ Selected: All tables with FULL_LOAD strategy\n")
+            print("Selected: All tables with FULL_LOAD strategy\n")
             return "all_full_load"
         elif choice == "3":
-            print("✓ Selected: Only full_load tables\n")
+            print("Selected: Only full_load tables\n")
             return "full_load"
         elif choice == "4":
-            print("✓ Selected: Only incremental_by_watermark tables\n")
+            print("Selected: Only incremental_by_watermark tables\n")
             return "incremental_by_watermark"
         else:
-            print("✗ Invalid choice. Please enter 1, 2, 3, or 4.\n")
+            print("Invalid choice. Please enter 1, 2, 3, or 4.\n")
 
 def filter_tables_by_strategy(tables, strategy_filter):
     """

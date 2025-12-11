@@ -201,7 +201,7 @@ services:
 
 networks:
   kafka_network:
-    external: true
+    driver: bridge
     name: kafka_network
 
 volumes:
