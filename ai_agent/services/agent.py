@@ -51,12 +51,21 @@ class DataWarehouseAgent:
 1. Query type: 'sql', 'document', or 'hybrid'
 2. If SQL query, which database: 'snowflake' (historical/analytical data) or 'postgres' (real-time streaming data)
 
-Snowflake contains:
-- Customer data (olist_customers_dataset)
-- Orders data (olist_orders_dataset)
-- Products data (olist_products_dataset)
-- Order items, payments, reviews, sellers, geolocation
-- Historical e-commerce analytics
+Snowflake ANALYTICS schema contains:
+- DIM_CUSTOMER - Customer dimension table
+- DIM_DATE - Date dimension table
+- DIM_GEOGRAPHY - Geography dimension table
+- DIM_PAYMENT_TYPE - Payment type dimension table
+- DIM_PRODUCT - Product dimension table
+- DIM_SELLER - Seller dimension table
+- FACT_ORDERS_ACCUMULATING - Orders fact table
+- FACT_ORDER_ITEMS - Order items fact table
+- FACT_PAYMENTS - Payments fact table
+- FACT_REVIEWS - Reviews fact table
+- MART_CUSTOMER_METRICS - Customer analytics mart
+- MART_PRODUCT_METRICS - Product analytics mart
+- MART_SALES_METRICS - Sales analytics mart
+- Historical e-commerce analytics and business intelligence data
 
 PostgreSQL contains:
 - Real-time streaming data
@@ -125,12 +134,13 @@ Return ONLY a JSON object with these fields:
 {schema_context}
 
 Important notes:
-- For Snowflake: Use uppercase for table/column names
+- For Snowflake: Query only from the ANALYTICS schema. Use uppercase for table/column names
+- All tables are in the ANALYTICS schema (DB_T25.ANALYTICS.table_name)
 - For PostgreSQL: Use lowercase
-- Always include appropriate JOINs
+- Always include appropriate JOINs when querying multiple tables
 - Add LIMIT clause for large result sets
-- Use clear aliases
-- Return ONLY the SQL query, no explanations"""),
+- Use clear table aliases (e.g., fc for FACT tables, dc for DIM tables)
+- Return ONLY the SQL query, no explanations or markdown"""),
             ("user", "{query}")
         ])
         

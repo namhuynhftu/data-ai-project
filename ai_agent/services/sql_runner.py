@@ -226,7 +226,7 @@ class SQLRunner:
             query = """
             SELECT table_name, column_name, data_type
             FROM information_schema.columns
-            WHERE table_schema = 'ANALYTICS
+            WHERE table_schema = 'ANALYTICS'
             ORDER BY table_name, ordinal_position
             """
             return self.execute_snowflake(query, max_rows=1000)
