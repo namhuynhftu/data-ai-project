@@ -32,11 +32,7 @@ class MySQLLoader(DataLoader):
                     f"@{self.params['host']}:{self.params['port']}/{self.params['database']}"
                 )
                 
-                self.logger.info("Establishing MySQL connection",
-                               host=self.params['host'],
-                               port=self.params['port'],
-                               database=self.params['database'],
-                               user=self.params['user'])
+                self.logger.info("Establishing MySQL connection")
                 self._engine = create_engine(connection_string, connect_args=ssl_args)
                 
                 # Test connection
@@ -46,9 +42,6 @@ class MySQLLoader(DataLoader):
             return self._engine
         except Exception as e:
             self.logger.error("MySQL connection failed",
-                            host=self.params['host'],
-                            port=self.params['port'],
-                            database=self.params['database'],
                             error=str(e),
                             error_type=type(e).__name__)
             raise

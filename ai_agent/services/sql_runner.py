@@ -47,8 +47,12 @@ class SQLRunner:
             "port": int(os.getenv("POSTGRES_PORT", 5432)),
             "user": os.getenv("POSTGRES_USER"),
             "password": os.getenv("POSTGRES_PASSWORD"),
-            "database": os.getenv("POSTGRES_DATABASE")
+            "database": os.getenv("POSTGRES_DB")
         }
+    
+    def _get_postgres_schema(self) -> str:
+        """Get PostgreSQL schema from environment."""
+        return os.getenv("POSTGRES_SCHEMA", "public")
     
     def execute_snowflake(
         self,
@@ -124,6 +128,10 @@ class SQLRunner:
         try:
             conn = psycopg2.connect(**self.postgres_config)
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            
+            # Set search_path to the configured schema
+            schema = self._get_postgres_schema()
+            cursor.execute(f"SET search_path TO {schema}, public")
             
             # Add LIMIT clause if not present
             if "LIMIT" not in query.upper():
