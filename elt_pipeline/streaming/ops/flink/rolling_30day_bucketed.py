@@ -29,8 +29,7 @@ THRESHOLD_AMOUNT = 3000.00
 BUCKET_SIZE_DAYS = 1  # Daily buckets (30 buckets total)
 KAFKA_BOOTSTRAP = "kafka:9092"
 KAFKA_TOPIC = "postgres.streaming.transactions.json"  # JSON topic from converter
-KAFKA_GROUP_ID = "pyflink-bucketed-30day-v4"  # New group to start fresh
-POSTGRES_URL = "jdbc:postgresql://postgres_streaming:5432/streaming_db"
+KAFKA_GROUP_ID = "pyflink-bucketed-30day-v5"  # New group to start fresh
 POSTGRES_USER = "user"
 POSTGRES_PASSWORD = "password"
 
@@ -41,17 +40,6 @@ POSTGRES_PASSWORD = "password"
 class BucketedRolling30DaySum(KeyedProcessFunction):
     """
     Maintains per-user state with daily buckets for 30-day rolling window.
-    
-    State Structure:
-    - daily_buckets: MapState[Int, Decimal] where key = day_offset, value = daily_sum
-    - last_alert_sum: ValueState[Decimal] tracks last emitted alert to avoid duplicates
-    
-    On each transaction:
-    1. Calculate which daily bucket it belongs to
-    2. Add amount to that bucket
-    3. Remove buckets older than 30 days
-    4. Sum all remaining buckets
-    5. Emit alert if sum >= threshold AND changed since last alert
     """
     
     def __init__(self):
@@ -273,14 +261,6 @@ def create_jdbc_sink() -> JdbcSink:
 def main():
     """
     Main PyFlink DataStream job execution.
-    
-    Pipeline:
-    1. Kafka Source (Debezium CDC)
-    2. Parse Debezium JSON → (user_id, amount, event_time_ms)
-    3. Assign Watermarks (5 second out-of-orderness)
-    4. Key by user_id
-    5. Apply BucketedRolling30DaySum (stateful processing)
-    6. JDBC Sink to PostgreSQL
     """
     # ========================================================================
     # 1. ENVIRONMENT SETUP

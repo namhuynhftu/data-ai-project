@@ -1,0 +1,40 @@
+# FastAPI and server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# LangChain
+langchain==0.1.6
+langchain-openai==0.0.5
+langchain-community==0.0.19
+
+# Vector store
+chromadb==0.4.22
+
+# PDF processing
+pypdf==4.0.1
+
+# Database connectors
+snowflake-connector-python==3.6.0
+psycopg2-binary==2.9.9
+
+# Data handling
+pandas==2.2.0
+numpy==1.26.3
+
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# OpenAI
+openai==1.10.0
+
+# JWT for Snowflake
+cryptography<42.0.0,>=3.1.0
+pyjwt==2.8.0
+
+# Testing (optional)
+pytest>=7.0.0,<8.0.0
+pytest-asyncio==0.23.4
+httpx==0.26.0

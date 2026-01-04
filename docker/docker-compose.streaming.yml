@@ -171,6 +171,23 @@ services:
         FLINK_PROPERTIES=
         jobmanager.rpc.address: flink-jobmanager
         parallelism.default: 2
+        # State Backend Configuration (RocksDB for production-grade performance)
+        state.backend: rocksdb
+        state.backend.incremental: true
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+        state.savepoints.dir: file:///tmp/flink-savepoints
+        # Checkpointing Configuration
+        execution.checkpointing.interval: 60000
+        execution.checkpointing.mode: EXACTLY_ONCE
+        execution.checkpointing.timeout: 600000
+        execution.checkpointing.min-pause: 5000
+        execution.checkpointing.max-concurrent-checkpoints: 1
+        execution.checkpointing.tolerable-failed-checkpoints: 3
+        # Cleanup on cancellation
+        execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+    volumes:
+      - flink_checkpoints:/tmp/flink-checkpoints
+      - flink_savepoints:/tmp/flink-savepoints
     networks:
       - kafka_network
     healthcheck:
@@ -195,6 +212,18 @@ services:
         jobmanager.rpc.address: flink-jobmanager
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 2
+        # State Backend Configuration (RocksDB for production-grade performance)
+        state.backend: rocksdb
+        state.backend.incremental: true
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+        state.savepoints.dir: file:///tmp/flink-savepoints
+        # Memory configuration for RocksDB
+        state.backend.rocksdb.memory.managed: true
+        state.backend.rocksdb.memory.write-buffer-ratio: 0.5
+        state.backend.rocksdb.memory.high-prio-pool-ratio: 0.1
+    volumes:
+      - flink_checkpoints:/tmp/flink-checkpoints
+      - flink_savepoints:/tmp/flink-savepoints
     networks:
       - kafka_network
     restart: unless-stopped
@@ -208,4 +237,8 @@ volumes:
   kafka_data:
     driver: local
   postgres_streaming_data:
+    driver: local
+  flink_checkpoints:
+    driver: local
+  flink_savepoints:
     driver: local
