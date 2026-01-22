@@ -3,13 +3,16 @@
 import os
 from typing import List, Dict, Any, Optional
 from enum import Enum
+from pathlib import Path
 import snowflake.connector
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project config
+root_path = Path(__file__).parent.parent.parent
+config_path = root_path / "config" / "app" / "development.env"
+load_dotenv(str(config_path))
 
 
 class DatabaseType(str, Enum):

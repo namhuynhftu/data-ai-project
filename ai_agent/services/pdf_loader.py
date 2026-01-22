@@ -26,7 +26,7 @@ class PDFLoaderService:
             chunk_overlap: Overlap between chunks
         """
         self.documents_path = Path(
-            documents_path or os.getenv("PDF_DOCUMENTS_PATH", "./documents")
+            documents_path or os.getenv("DOCUMENTS_PATH", "./documents")
         )
         self.documents_path.mkdir(exist_ok=True)
         

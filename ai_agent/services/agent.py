@@ -3,13 +3,14 @@
 import os
 from typing import Dict, Any, List
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
 from services.sql_runner import get_sql_runner, DatabaseType
 from services.rag_retriever import get_rag_retriever
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+load_dotenv("config/app/development.env")
 
 
 class DataWarehouseAgent:
@@ -35,6 +36,45 @@ class DataWarehouseAgent:
         
         self.sql_runner = get_sql_runner()
         self.rag_retriever = get_rag_retriever()
+        
+        # Conversation memory - store last N exchanges
+        self.conversation_history: List[Dict[str, str]] = []
+        self.max_history = 10  # Keep last 10 exchanges
+    
+    def _add_to_history(self, user_query: str, assistant_response: str):
+        """Add exchange to conversation history."""
+        self.conversation_history.append({
+            "user": user_query,
+            "assistant": assistant_response
+        })
+        
+        # Trim to max_history
+        if len(self.conversation_history) > self.max_history:
+            self.conversation_history = self.conversation_history[-self.max_history:]
+    
+    def _format_history_for_context(self) -> str:
+        """Format conversation history as context string."""
+        if not self.conversation_history:
+            return ""
+        
+        history_parts = []
+        for exchange in self.conversation_history[-3:]:  # Last 3 exchanges
+            history_parts.append(f"User: {exchange['user']}")
+            history_parts.append(f"Assistant: {exchange['assistant']}")
+        
+        return "\n".join(history_parts)
+    
+    def clear_history(self):
+        """Clear conversation history."""
+        self.conversation_history = []
+    
+    def get_history_length(self) -> int:
+        """Get number of exchanges in history."""
+        return len(self.conversation_history)
+        
+        # Conversation memory - store last N exchanges
+        self.conversation_history: List[Dict[str, str]] = []
+        self.max_history = 10  # Keep last 10 exchanges
     
     def classify_query(self, query: str) -> Dict[str, Any]:
         """
@@ -46,6 +86,12 @@ class DataWarehouseAgent:
         Returns:
             Dictionary with query type and recommended database
         """
+        # Add conversation context if available
+        history_context = self._format_history_for_context()
+        context_instruction = ""
+        if history_context:
+            context_instruction = f"\n\nRecent conversation history:\n{history_context}\n\nConsider the conversation context when classifying."
+        
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a query classifier. Analyze the user's query and determine:
 1. Query type: 'sql', 'document', or 'hybrid'
@@ -68,18 +114,16 @@ Snowflake ANALYTICS schema contains:
 - Historical e-commerce analytics and business intelligence data
 
 PostgreSQL contains:
-- Real-time streaming data
-- User alerts for high-value transactions
-- Recent transaction monitoring
+- Real-time streaming data from Kafka
+- kafka_streaming.invoices table with recent invoice data
+- Real-time transaction monitoring
+- Current streaming events
 
 Documents contain:
 - Data pipeline documentation
 - Data masking policies
 - Compliance information
-- Setup guides
-
-Return ONLY a JSON object with these fields:
-{{"query_type": "sql|document|hybrid", "database": "snowflake|postgres|documents", "reasoning": "brief explanation"}}"""),
+- Setup guides""" + context_instruction),
             ("user", "{query}")
         ])
         
@@ -128,6 +172,12 @@ Return ONLY a JSON object with these fields:
                     current_table = table_name
                 schema_context += f"  - {column_name} ({data_type})\n"
         
+        # Add conversation context
+        history_context = self._format_history_for_context()
+        context_instruction = ""
+        if history_context:
+            context_instruction = f"\n\nRecent conversation:\n{history_context}\n\nConsider the conversation context for ambiguous references."
+        
         prompt = ChatPromptTemplate.from_messages([
             ("system", f"""You are a SQL expert. Generate a valid SQL query for {database}.
 
@@ -136,11 +186,11 @@ Return ONLY a JSON object with these fields:
 Important notes:
 - For Snowflake: Query only from the ANALYTICS schema. Use uppercase for table/column names
 - All tables are in the ANALYTICS schema (DB_T25.ANALYTICS.table_name)
-- For PostgreSQL: Use lowercase
+- For PostgreSQL: Use lowercase, query kafka_streaming schema
 - Always include appropriate JOINs when querying multiple tables
 - Add LIMIT clause for large result sets
 - Use clear table aliases (e.g., fc for FACT tables, dc for DIM tables)
-- Return ONLY the SQL query, no explanations or markdown"""),
+- Return ONLY the SQL query, no explanations or markdown""" + context_instruction),
             ("user", "{query}")
         ])
         
@@ -342,6 +392,9 @@ Provide a unified answer:""")
                 "sources": [],
                 "query_type": "unknown"
             }
+        
+        # Add to conversation history
+        self._add_to_history(query, result.get("answer", ""))
         
         return result
 

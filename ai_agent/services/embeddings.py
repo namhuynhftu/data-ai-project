@@ -2,11 +2,14 @@
 
 import os
 from typing import List
+from pathlib import Path
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project config
+root_path = Path(__file__).parent.parent.parent
+config_path = root_path / "config" / "app" / "development.env"
+load_dotenv(str(config_path))
 
 
 class EmbeddingService:

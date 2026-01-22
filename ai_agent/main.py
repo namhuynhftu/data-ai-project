@@ -24,7 +24,7 @@ if __name__ == "__main__":
     
     # Run server
     uvicorn.run(
-        app,
+        "api.main:app",  # Import string for reload support
         host=host,
         port=port,
         reload=True,  # Enable auto-reload during development
