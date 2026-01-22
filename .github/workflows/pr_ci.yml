@@ -8,6 +8,7 @@ on:
       - "dwh/snowflake/**/*.yml"
       - "dwh/snowflake/dbt_project.yml"
       - ".github/workflows/pr_ci.yml"
+      - ".dbt/profiles.yml"
 
 jobs:
   PR_CI:
