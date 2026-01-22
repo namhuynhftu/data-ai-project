@@ -150,16 +150,16 @@ streaming-down: ## Stop streaming services only
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down
 	@echo "Streaming services stopped"
 
-streaming-restart:
-	@cho "Restarting streaming services..."
-	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down -v 
-	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d --build
-	@echo "Streaming services restarted"
+streaming-restart: ## Restart streaming services
+	@echo "Stopping streaming services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) down
+	@echo "Streaming services stopped"
+	@echo "Starting streaming services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) up -d
+	@echo "Streaming services started"
 
 streaming-logs: ## View streaming services logs
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) logs -f
-
-streaming-restart: streaming-down streaming-up ## Restart streaming services
 
 # ==============================================================================
 # Invoice Services (Manual Control for Demo)

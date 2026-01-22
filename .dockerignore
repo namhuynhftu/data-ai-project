@@ -1,0 +1,60 @@
+# Ignore logs and runtime files
+airflow/logs/
+logs/
+*.log
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Ignore virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Ignore data files
+data/
+data_temp/
+*.csv
+*.parquet
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore Docker volumes
+**/volumes/
+
+# Ignore personal files
+ai_agent/documents/*.pdf
+ai_agent/vector_store/
+
+# Ignore test files
+tests/
+**/test_*.py
+**/*_test.py
+
+# Ignore documentation builds
+docs/_build/
+dwh/snowflake/target/
+dwh/snowflake/dbt_packages/
+
+# Ignore environment files
+.env
+.env.*
+config/app/*.env
