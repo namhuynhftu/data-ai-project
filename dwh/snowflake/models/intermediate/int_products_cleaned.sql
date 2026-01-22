@@ -1,3 +1,10 @@
+{{
+    config(
+        materialized='view',
+        tags=['intermediate']
+    )
+}}
+
 with joined as (
     select
         p.product_id,

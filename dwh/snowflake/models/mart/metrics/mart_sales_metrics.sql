@@ -2,7 +2,7 @@
     config(
         materialized='table',
         cluster_by=['order_month'],
-        tags=['metrics', 'business']
+        tags=['mart', 'metrics', 'business']
     )
 }}
 

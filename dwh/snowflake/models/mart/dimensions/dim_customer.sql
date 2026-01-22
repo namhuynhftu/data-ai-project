@@ -2,7 +2,7 @@
     config(
         materialized='table',
         cluster_by=['customer_state', 'customer_city'],
-        tags=['dimension', 'core']
+        tags=['mart', 'dimension', 'core']
     )
 }}
 

@@ -2,7 +2,7 @@
     config(
         materialized='table',
         cluster_by=['customer_key'],
-        tags=['metrics', 'customer']
+        tags=['mart', 'metrics', 'customer']
     )
 }}
 
