@@ -1,0 +1,59 @@
+# ========================================
+# Personal Files
+# ========================================
+# Ignore personal resume and documents
+documents/*.pdf
+documents/*.docx
+documents/*.doc
+
+# Keep the markdown documentation files
+!documents/*.md
+
+# ========================================
+# Vector Store - Indexed Documents
+# ========================================
+# Ignore the entire vector store directory (ChromaDB persistence)
+vector_store/
+*.sqlite3
+
+# ========================================
+# Environment & Secrets
+# ========================================
+# Ignore environment files with API keys
+.env
+.env.local
+.env.development
+.env.production
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# ========================================
+# IDE & Editors
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ========================================
+# OS
+# ========================================
+.DS_Store
+Thumbs.db
+
+# ========================================
+# Logs
+# ========================================
+*.log
+logs/
