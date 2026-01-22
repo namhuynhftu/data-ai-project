@@ -228,6 +228,56 @@ services:
       - kafka_network
     restart: unless-stopped
 
+  # Kafka Producer for Invoice Data
+  invoice-producer:
+    profiles: ["invoices"]
+    build:
+      context: ../kafka
+      dockerfile: Dockerfile.producer
+    container_name: invoice_producer
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: streaming_invoices
+      POSTGRES_KAFKA_HOST: postgres_streaming
+      POSTGRES_KAFKA_PORT: 5432
+      POSTGRES_KAFKA_DB: ${POSTGRES_DB:-streaming_db}
+      POSTGRES_KAFKA_USER: ${POSTGRES_USER:-user}
+      POSTGRES_KAFKA_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_KAFKA_SCHEMA: kafka_streaming
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres_streaming:
+        condition: service_healthy
+    networks:
+      - kafka_network
+    restart: unless-stopped
+
+  # Kafka Consumer for Invoice Data
+  invoice-consumer:
+    profiles: ["invoices"]
+    build:
+      context: ../kafka
+      dockerfile: Dockerfile.consumer
+    container_name: invoice_consumer
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: streaming_invoices
+      POSTGRES_KAFKA_HOST: postgres_streaming
+      POSTGRES_KAFKA_PORT: 5432
+      POSTGRES_KAFKA_DB: ${POSTGRES_DB:-streaming_db}
+      POSTGRES_KAFKA_USER: ${POSTGRES_USER:-user}
+      POSTGRES_KAFKA_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_KAFKA_SCHEMA: kafka_streaming
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres_streaming:
+        condition: service_healthy
+    networks:
+      - kafka_network
+    restart: unless-stopped
+
 networks:
   kafka_network:
     external: true

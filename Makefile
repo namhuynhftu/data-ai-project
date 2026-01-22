@@ -162,6 +162,28 @@ streaming-logs: ## View streaming services logs
 streaming-restart: streaming-down streaming-up ## Restart streaming services
 
 # ==============================================================================
+# Invoice Services (Manual Control for Demo)
+# ==============================================================================
+invoices-up: ## Start invoice producer and consumer (for demo)
+	@echo "Starting invoice services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) --profile invoices up -d
+	@echo "Invoice services started"
+
+invoices-down: ## Stop invoice producer and consumer
+	@echo "Stopping invoice services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) stop invoice_producer invoice_consumer
+	@echo "Invoice services stopped"
+
+invoices-logs: ## View invoice services logs
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) logs -f invoice-producer invoice-consumer
+
+invoices-restart: ## Rebuild and restart invoice services
+	@echo "Restarting invoice services..."
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) stop invoice_producer invoice_consumer
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) --profile invoices up -d --build
+	@echo "Invoice services restarted"
+
+# ==============================================================================
 # Monitoring & Debugging
 # ==============================================================================
 status: ## Show status of all containers
