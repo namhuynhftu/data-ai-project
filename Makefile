@@ -171,7 +171,7 @@ invoices-up: ## Start invoice producer and consumer (for demo)
 
 invoices-down: ## Stop invoice producer and consumer
 	@echo "Stopping invoice services..."
-	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) stop invoice_producer invoice_consumer
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) stop invoice-producer invoice-consumer
 	@echo "Invoice services stopped"
 
 invoices-logs: ## View invoice services logs
@@ -179,7 +179,7 @@ invoices-logs: ## View invoice services logs
 
 invoices-restart: ## Rebuild and restart invoice services
 	@echo "Restarting invoice services..."
-	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) stop invoice_producer invoice_consumer
+	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) stop invoice-producer invoice-consumer
 	@docker compose -f $(STREAMING_COMPOSE) -p $(STREAMING_PROJECT) --profile invoices up -d --build
 	@echo "Invoice services restarted"
 

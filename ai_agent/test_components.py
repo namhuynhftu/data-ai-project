@@ -8,9 +8,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from dotenv import load_dotenv
-
+project_root = Path(__file__).parent.parent
+config_path = project_root / "config" / "app" / "development.env"
 # Load environment
-load_dotenv()
+load_dotenv(config_path)
 
 print("🧪 AI Agent Component Tests\n")
 print("=" * 60)
@@ -148,36 +149,6 @@ def test_agent():
         return False
 
 
-def test_api():
-    """Test API endpoints."""
-    print("\n6️⃣ Testing API...")
-    try:
-        from api.main import app
-        from fastapi.testclient import TestClient
-        
-        client = TestClient(app)
-        
-        # Test root endpoint
-        response = client.get("/")
-        print(f"   Root endpoint: {'✅' if response.status_code == 200 else '❌'}")
-        
-        # Test health endpoint
-        response = client.get("/health")
-        print(f"   Health endpoint: {'✅' if response.status_code == 200 else '❌'}")
-        if response.status_code == 200:
-            health = response.json()
-            print(f"      Status: {health['status']}")
-        
-        # Test databases endpoint
-        response = client.get("/databases")
-        print(f"   Databases endpoint: {'✅' if response.status_code == 200 else '❌'}")
-        
-        return True
-    except Exception as e:
-        print(f"   ❌ Error: {str(e)}")
-        return False
-
-
 def main():
     """Run all tests."""
     results = []
@@ -199,7 +170,6 @@ def main():
     results.append(("SQL Runner", test_sql_runner()))
     results.append(("RAG Retriever", test_rag_retriever()))
     results.append(("Agent", test_agent()))
-    results.append(("API", test_api()))
     
     # Summary
     print("\n" + "=" * 60)

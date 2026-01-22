@@ -4,7 +4,7 @@
         unique_key='review_id',
         on_schema_change='sync_all_columns',
         incremental_strategy='merge',
-        tags=['fact', 'incremental']
+        tags=['mart', 'fact', 'incremental']
     )
 }}
 

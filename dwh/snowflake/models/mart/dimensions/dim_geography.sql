@@ -1,3 +1,10 @@
+{{
+    config(
+        materialized='table',
+        tags=['mart', 'dimension']
+    )
+}}
+
 with geo as (
     select
         geolocation_zip_code_prefix,

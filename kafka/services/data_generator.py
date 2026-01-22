@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 import random
 
 from faker import Faker
@@ -69,7 +69,7 @@ def generate_invoices(faker: Faker) -> InvoicesEvent:
         customer_state=faker.state_abbr(),
         seller_city=faker.city(),
         seller_state=faker.state_abbr(),
-        timestamp=datetime.now(UTC).isoformat(),
+        timestamp=datetime.now().isoformat(),
         source_system="kafka_producer",
         processing_time_ms=random.randint(50, 500),
     )

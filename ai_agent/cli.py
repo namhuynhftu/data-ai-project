@@ -11,7 +11,9 @@ from dotenv import load_dotenv
 from services.agent import get_agent
 
 # Load environment
-load_dotenv()
+root_path = Path(__file__).parent.parent
+config_path = root_path / "config" / "app" / "development.env"
+load_dotenv(str(config_path))
 
 
 def print_banner():
@@ -30,6 +32,8 @@ def print_banner():
     print("  :exit     - Exit the CLI")
     print("  :health   - Check system health")
     print("  :db <db>  - Switch database (snowflake|postgres|documents|auto)")
+    print("  :history  - Show conversation history")
+    print("  :clear    - Clear conversation memory")
     print("=" * 60 + "\n")
 
 
@@ -114,6 +118,22 @@ def main():
                             print(f"✅ Switched to {current_db}")
                         else:
                             print("❌ Invalid database. Use: snowflake, postgres, documents, or auto")
+                    continue
+                
+                elif cmd[0] == "history":
+                    history_len = agent.get_history_length()
+                    print(f"\n📜 Conversation History ({history_len} exchanges):\n")
+                    if history_len == 0:
+                        print("No conversation history yet.")
+                    else:
+                        for i, exchange in enumerate(agent.conversation_history, 1):
+                            print(f"[{i}] User: {exchange['user'][:80]}...")
+                            print(f"    Bot:  {exchange['assistant'][:80]}...\n")
+                    continue
+                
+                elif cmd[0] == "clear":
+                    agent.clear_history()
+                    print("✅ Conversation memory cleared")
                     continue
                 
                 else:

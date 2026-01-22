@@ -24,7 +24,7 @@ class RAGRetriever:
         self,
         query: str,
         top_k: int = None,
-        score_threshold: float = 0.5
+        score_threshold: float = 0.0
     ) -> List[Dict[str, Any]]:
         """
         Retrieve relevant documents for a query.
@@ -32,7 +32,7 @@ class RAGRetriever:
         Args:
             query: Query text
             top_k: Number of documents to retrieve (overrides default)
-            score_threshold: Minimum relevance score
+            score_threshold: Minimum relevance score (default 0.0 to return all results)
             
         Returns:
             List of dictionaries with document content and metadata
@@ -48,15 +48,17 @@ class RAGRetriever:
         # Filter by score threshold and format results
         retrieved_docs = []
         for doc, score in results:
-            # Lower score = more similar (distance metric)
-            similarity = 1 - score if score < 1 else 0
+            # For Chroma, score is distance - lower is better
+            # We'll just use inverse for display purposes
+            similarity = max(0, 2 - score)  # Scale so lower distances = higher similarity
             
-            if similarity >= score_threshold:
+            # Always include results unless score is extremely high
+            if score < 10:  # Reasonable distance threshold
                 retrieved_docs.append({
                     "content": doc.page_content,
                     "metadata": doc.metadata,
                     "similarity": similarity,
-                    "source": doc.metadata.get("source_file", "unknown")
+                    "source": doc.metadata.get("source", "unknown")
                 })
         
         return retrieved_docs

@@ -1,7 +1,7 @@
 {{
     config(
         materialized='table',
-        tags=['dimension', 'cross-db']
+        tags=['mart', 'dimension', 'cross-db']
     )
 }}
 

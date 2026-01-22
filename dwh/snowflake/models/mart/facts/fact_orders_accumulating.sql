@@ -4,7 +4,7 @@
         unique_key='order_id',
         on_schema_change='sync_all_columns',
         cluster_by=['purchase_date', 'order_status'],
-        tags=['fact', 'incremental']
+        tags=['mart', 'fact', 'incremental']
     )
 }}
 
