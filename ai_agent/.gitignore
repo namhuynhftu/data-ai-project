@@ -11,7 +11,8 @@ documents/*
 # Vector Store - Indexed Documents
 # ========================================
 # Ignore the entire vector store directory (ChromaDB persistence)
-vector_store/
+vector_store/e2097780-88b8-4718-a209-c74671bd490a/*.bin
+vector_store/7ac73a44-a94f-4f0d-bb27-76bc47a3e349/*.bin
 *.sqlite3
 
 # ========================================
