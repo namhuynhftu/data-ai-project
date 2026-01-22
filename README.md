@@ -37,7 +37,7 @@ This project solves these challenges using a scalable, cloud-native architecture
 graph TB
     subgraph Sources["🔹 Data Sources"]
         MySQL[(MySQL 8.0<br/>Brazilian E-commerce<br/>9 Tables, 1.5M+ rows)]
-        KafkaGen[Kafka Producer<br/>Invoice Generator<br/>Real-time Events]
+        PG_Stream[(PostgreSQL<br/>streaming_db.streaming<br/>CDC Source Tables)]
     end
     
     subgraph Batch["🔄 Batch Pipeline - Historical Data"]
@@ -52,14 +52,18 @@ graph TB
         SnowStage -->|Load| SnowRaw
     end
     
-    subgraph Stream["⚡ Streaming Pipeline - Real-time Data"]
-        Kafka[Kafka Topic<br/>invoices]
-        Consumer[Kafka Consumer<br/>confluent_kafka]
-        PG[(PostgreSQL<br/>streaming_db.invoices)]
+    subgraph Stream["⚡ Streaming Pipeline - Real-time CDC & Processing"]
+        Debezium[Debezium Connector<br/>CDC Capture]
+        Kafka[Apache Kafka<br/>Topics: CDC streams]
+        Flink[Apache Flink<br/>Stream Processing<br/>Fraud Detection Rules]
+        PG_Landing[(PostgreSQL<br/>kafka_streaming<br/>Landing Zone)]
+        PG_Alerts[(PostgreSQL<br/>streaming.user_alerts<br/>Fraud Detection Output)]
         
-        KafkaGen -->|JSON Events| Kafka
-        Kafka -->|Poll & Consume| Consumer
-        Consumer -->|INSERT| PG
+        PG_Stream -->|Change Data Capture| Debezium
+        Debezium -->|Publish changes| Kafka
+        Kafka -->|Raw events| PG_Landing
+        Kafka -->|Stream processing| Flink
+        Flink -->|Monitoring alerts| PG_Alerts
     end
     
     subgraph Transform["🔄 Transformation Layer - dbt"]
@@ -92,8 +96,9 @@ graph TB
         CLI --> Agent
         Agent -->|Document queries| RAG
         Agent -->|Data queries| SQLRunner
-        SQLRunner -->|Batch data| Mart
-        SQLRunner -->|Real-time data| PG
+        SQLRunner -->|Batch analytics| Mart
+        SQLRunner -->|Real-time alerts| PG_Alerts
+        SQLRunner -->|Landing data| PG_Landing
     end
     
     classDef source fill:#e1f5ff,stroke:#01579b,stroke-width:2px
@@ -103,9 +108,9 @@ graph TB
     classDef orchestration fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     classDef ai fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     
-    class MySQL,KafkaGen source
+    class MySQL,PG_Stream source
     class Extract,MinIO,SnowStage,SnowRaw batch
-    class Kafka,Consumer,PG stream
+    class Debezium,Kafka,Flink,PG_Landing,PG_Alerts stream
     class Staging,Intermediate,Mart transform
     class Airflow,DBT_Tests,CI orchestration
     class CLI,RAG,SQLRunner,Agent ai
@@ -116,8 +121,16 @@ graph TB
 | Pipeline | Latency | Volume | Storage | Use Case |
 |----------|---------|--------|---------|----------|
 | **Batch** | Daily (2 AM) | 1.5M+ rows | MinIO → Snowflake | Historical analytics, trends, BI dashboards |
-| **Streaming** | < 5 minutes | ~100 events/min | PostgreSQL | Real-time monitoring, operational metrics |
+| **Streaming CDC** | < 5 minutes | Real-time changes | PostgreSQL → Kafka → Flink | Change data capture, fraud detection, alerts |
+| **Streaming Landing** | < 1 minute | ~100 events/min | Kafka → PostgreSQL (kafka_streaming) | Raw event storage, audit trail |
 | **AI Agent** | < 2 seconds | N/A | ChromaDB + LLM | Natural language queries, hybrid analytics |
+
+### PostgreSQL Schema Architecture
+
+| Schema | Purpose | Tables | Access Pattern |
+|--------|---------|--------|----------------|
+| **streaming** | CDC source + alerts output | Source tables + user_alerts | Debezium reads changes → Flink writes alerts |
+| **kafka_streaming** | Landing zone for raw events | invoices, orders, etc. | Kafka consumer writes → Analytics reads |
 
 ---
 
@@ -160,16 +173,25 @@ graph TB
 {% endif %}
 ```
 
-### 4. **Kafka for Streaming (Not Debezium CDC)**
-**Decision**: Use Kafka producer/consumer for streaming instead of CDC from MySQL.
+### 4. **Debezium CDC + Flink Stream Processing**
+**Decision**: Use Debezium for Change Data Capture from PostgreSQL with Flink for stream processing.
 
 **Rationale**:
-- **Simplicity**: Direct Kafka integration easier to maintain than Debezium connectors
-- **Data Generation**: Fake data generator simulates real-time events for demo
-- **Decoupling**: Separates batch (historical) from streaming (operational) concerns
-- **Latency Requirements**: Kafka meets < 5 minute latency requirement
+- **Real CDC**: Captures actual database changes (INSERT/UPDATE/DELETE) from PostgreSQL `streaming` schema
+- **Event-Driven Architecture**: Kafka acts as durable event log between CDC and stream processing
+- **Stream Processing**: Flink applies business rules and fraud detection logic in real-time
+- **Dual Landing Strategy**: 
+  - Raw events → `kafka_streaming` schema (audit trail)
+  - Processed alerts → `streaming.user_alerts` table (actionable insights)
 
-**Trade-off**: Not true CDC, but sufficient for analytics use case
+**Architecture**:
+```
+PostgreSQL (streaming) → Debezium → Kafka → Flink → PostgreSQL (user_alerts)
+                                         ↓
+                                 PostgreSQL (kafka_streaming)
+```
+
+**Trade-off**: More complex than direct producer/consumer, but enables sophisticated stream processing and fraud detection
 
 ### 5. **Hybrid AI Agent (RAG + SQL)**
 **Decision**: Build unified agent that routes queries to either RAG system or SQL engine.
@@ -282,22 +304,39 @@ fa-dae2-capstone-namhuynh/
 - **pandas**: Data manipulation and analysis
 - **SQLAlchemy**: Database abstraction layer
 - **PyMySQL**: MySQL database connectivity
+- **psycopg2**: PostgreSQL database connectivity
 
 ### **Data Infrastructure**
-- **MySQL 8.0**: Source database with SSL
+- **MySQL 8.0**: Batch source database
+- **PostgreSQL 14**: Streaming source (CDC) and landing zone
 - **MinIO**: S3-compatible object storage (data lake)
 - **Snowflake**: Cloud data warehouse
-- **dbt**: Data transformation and modeling
+- **dbt**: Data transformation and modeling (batch)
+
+### **Streaming Stack**
+- **Apache Kafka**: Distributed event streaming platform
+- **Debezium**: Change Data Capture (CDC) connector
+- **Apache Flink**: Stream processing engine for fraud detection
+- **Zookeeper**: Kafka cluster coordination
 
 ### **Containerization & Orchestration**
 - **Docker**: Containerization
 - **docker-compose**: Multi-container orchestration
+- **Apache Airflow**: Batch pipeline orchestration
 - **uv**: Fast Python package manager
+
+### **AI & Analytics**
+- **LangChain**: AI agent orchestration
+- **OpenAI GPT-4o-mini**: Large language model
+- **ChromaDB**: Vector database for RAG
+- **OpenAI Embeddings**: Text embeddings (text-embedding-3-small)
 
 ### **Development Tools**
 - **VS Code**: Development environment
 - **Git**: Version control
 - **pytest**: Testing framework
+- **SQLFluff**: SQL linting
+- **GitHub Actions**: CI/CD automation
 
 ## 🚀 Setup Instructions
 
@@ -482,24 +521,55 @@ uv run dbt run
 
 # Run incremental models only
 uv run dbt run --select fact_order_items fact_reviews fact_orders_accumulating
-
-# Run data quality tests
-uv run dbt test
-
-# Generate and serve documentation
-uv run dbt docs generate
-uv run dbt docs serve
-```
-
-#### **C. Streaming Pipeline (Real-time)**
+CDC + Flink Processing)**
 
 ```bash
-# Terminal 1: Start Kafka producer (generates fake invoice data)
-docker compose -f docker/docker-compose.streaming.yml up -d kafka zookeeper
-uv run python kafka/producer.py
+# Step 1: Start streaming infrastructure
+docker compose -f docker/docker-compose.streaming.yml up -d
 
-# Terminal 2: Start Kafka consumer (writes to PostgreSQL)
-uv run python kafka/consumer.py
+# This starts:
+# - PostgreSQL (with streaming + kafka_streaming schemas)
+# - Kafka + Zookeeper
+# - Debezium Connect (CDC connector)
+# - Flink JobManager + TaskManager
+
+# Step 2: Verify Debezium CDC connector
+curl -H "Accept:application/json" localhost:8083/connectors/
+
+# Step 3: Monitor CDC events in Kafka
+docker exec -it kafka kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic streaming_db.streaming.source_table \
+  --from-beginning
+
+# Step 4: Check Flink jobs
+# Access Flink UI at http://localhost:8081
+
+# Step 5: Monitor fraud detection alerts
+uv run python -c "
+import psycopg2
+conn = psycopg2.connect(
+    host='localhost',
+    port=5432,
+    user='postgres',
+    password='postgres',
+    database='streaming_db'
+)
+cur = conn.cursor()
+
+# Check landing zone
+cur.execute('SELECT COUNT(*) FROM kafka_streaming.invoices')
+print(f'Landing zone records: {cur.fetchone()[0]}')
+
+# Check fraud alerts         (Snowflake batch data)
+# - "Show me the latest fraud alerts from user_alerts table"      (PostgreSQL streaming.user_alerts)
+# - "How many invoices landed in kafka_streaming schema?"         (PostgreSQL kafka_streaming)
+# - "According to my resume, what is my previous job?"            (RAG document query)
+# - "According to documentation, what is the Flink job for fraud detection?
+# Show recent alerts
+cur.execute('SELECT * FROM streaming.user_alerts ORDER BY created_at DESC LIMIT 5')
+for row in cur.fetchall():
+    print(row
 
 # Monitor PostgreSQL data
 uv run python -c "
@@ -547,17 +617,20 @@ uv run python ai_agent/cli.py
 
 ### Option 3: Run Tests
 
-```bash
-# Run dbt data quality tests
-cd dwh/snowflake
-uv run dbt test
+``Debezium CDC: Capturing changes from PostgreSQL streaming schema
+✅ Kafka topics: CDC events flowing (check with kafka-console-consumer)
+✅ Flink jobs: Running fraud detection processing (check Flink UI at :8081)
+✅ PostgreSQL kafka_streaming: Landing zone receiving raw events
+✅ PostgreSQL streaming.user_alerts: Fraud alerts being generated
+✅ Latency: < 5 minutes from CDC capture to alert generation
 
 # Expected output:
 # - Generic tests: unique, not_null constraints (20+ tests)
 # - Singular tests: business logic validation (2 custom tests)
-
-# Run Python unit tests (if implemented)
-cd ../..
+ alerts/streaming landing/hybrid)
+✅ Conversation memory: Context preserved across turns
+✅ Response time: < 2 seconds for typical queries
+✅ Dual PostgreSQL access: Can query both streaming.user_alerts and kafka_streaming schema
 uv run pytest tests/
 ```
 
@@ -578,19 +651,22 @@ uv run pytest tests/
 ### Streaming Pipeline Success Indicators
 
 ```
-✅ Kafka producer: Generating ~100 events/minute
-✅ Kafka consumer: Reading and inserting to PostgreSQL
-✅ PostgreSQL: Invoices table growing continuously
-✅ Latency: < 5 minutes from generation to database
+✅ Debezium CDC: Capturing changes from PostgreSQL streaming schema
+✅ Kafka topics: CDC events flowing (check with kafka-console-consumer)
+✅ Flink jobs: Running fraud detection processing (check Flink UI at :8081)
+✅ PostgreSQL kafka_streaming: Landing zone receiving raw events
+✅ PostgreSQL streaming.user_alerts: Fraud alerts being generated
+✅ Latency: < 5 minutes from CDC capture to alert generation
 ```
 
 ### AI Agent Success Indicators
 
 ```
 ✅ Vector store: 6+ document chunks indexed
-✅ Query classification: Correct routing (document/batch/streaming/hybrid)
+✅ Query classification: Correct routing (document/batch/streaming alerts/streaming landing/hybrid)
 ✅ Conversation memory: Context preserved across turns
 ✅ Response time: < 2 seconds for typical queries
+✅ Dual PostgreSQL access: Can query both streaming.user_alerts and kafka_streaming schemas
 ```
 
 ---
@@ -705,7 +781,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Snowflake**: For cloud data warehouse platform
 - **dbt**: For data transformation framework
 - **MinIO**: For object storage solution
+- **Apache Kafka & Flink**: For stream processing infrastructure
+- **Debezium**: For change data capture capabilities
+- **LangChain & OpenAI**: For AI-powered analytics agent
 
 ---
+
+**📊 Built with ❤️ for Modern Data Engineering & Real-time Analytics**
 
 **📊 Built with ❤️ for Modern Data Engineering**
