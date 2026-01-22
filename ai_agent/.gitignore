@@ -2,16 +2,16 @@
 # Personal Files
 # ========================================
 # Ignore personal resume and documents
-ai_agent/documents/*
+documents/*
 
 # Keep the markdown documentation files
-ai_agent/documents/*.md
+!documents/*.md
 
 # ========================================
 # Vector Store - Indexed Documents
 # ========================================
 # Ignore the entire vector store directory (ChromaDB persistence)
-vector_store/*
+vector_store/
 *.sqlite3
 
 # ========================================
