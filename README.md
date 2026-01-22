@@ -101,12 +101,12 @@ graph TB
         SQLRunner -->|Landing data| PG_Landing
     end
     
-    classDef source fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef batch fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef stream fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef transform fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    classDef orchestration fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    classDef ai fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef source fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000
+    classDef batch fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000
+    classDef stream fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000
+    classDef transform fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000
+    classDef orchestration fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000
+    classDef ai fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000
     
     class MySQL,PG_Stream source
     class Extract,MinIO,SnowStage,SnowRaw batch
