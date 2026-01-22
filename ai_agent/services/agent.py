@@ -86,6 +86,27 @@ class DataWarehouseAgent:
         Returns:
             Dictionary with query type and recommended database
         """
+        # Quick classification for explicit document queries
+        query_lower = query.lower()
+        doc_keywords = ['documentation', 'document', 'docs', 'resume', 'applicant', 'candidate', 
+                       'according to', 'pdf', 'guide', 'manual', 'readme']
+        
+        if any(keyword in query_lower for keyword in doc_keywords):
+            # Check if also asking for data (hybrid)
+            data_keywords = ['show me', 'query', 'count', 'how many', 'list', 'display', 'get']
+            if any(keyword in query_lower for keyword in data_keywords) and ('then' in query_lower or 'also' in query_lower or 'and' in query_lower):
+                return {
+                    "query_type": "hybrid",
+                    "database": "documents",
+                    "reasoning": "Query mentions documentation AND requests data"
+                }
+            else:
+                return {
+                    "query_type": "document",
+                    "database": "documents",
+                    "reasoning": "Query explicitly mentions documentation/resume"
+                }
+        
         # Add conversation context if available
         history_context = self._format_history_for_context()
         context_instruction = ""
@@ -96,6 +117,8 @@ class DataWarehouseAgent:
             ("system", """You are a query classifier. Analyze the user's query and determine:
 1. Query type: 'sql', 'document', or 'hybrid'
 2. If SQL query, which database: 'snowflake' (historical/analytical data) or 'postgres' (real-time streaming data)
+
+IMPORTANT: If the query mentions "documentation", "docs", "resume", "applicant", "candidate" or "according to" - classify as 'document' or 'hybrid' (if also requesting data).
 
 Snowflake ANALYTICS schema contains:
 - DIM_CUSTOMER - Customer dimension table
@@ -120,10 +143,14 @@ PostgreSQL contains:
 - Current streaming events
 
 Documents contain:
+- Resume/CV information (applicant, candidate details, work history, education)
 - Data pipeline documentation
-- Data masking policies
-- Compliance information
-- Setup guides""" + context_instruction),
+- Snowflake schema documentation  
+- Streaming pipeline architecture
+- Setup guides
+
+Return ONLY a JSON object with these fields:
+{{"query_type": "sql|document|hybrid", "database": "snowflake|postgres|documents", "reasoning": "brief explanation"}}""" + context_instruction),
             ("user", "{query}")
         ])
         

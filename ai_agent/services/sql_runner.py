@@ -246,7 +246,7 @@ class SQLRunner:
             query = """
             SELECT table_name, column_name, data_type
             FROM information_schema.columns
-            WHERE table_schema = 'streaming'
+            WHERE table_schema = 'kafka_streaming'
             ORDER BY table_name, ordinal_position
             """
             return self.execute_postgres(query, max_rows=1000)
