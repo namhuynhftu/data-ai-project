@@ -10,12 +10,11 @@ logger = logging.getLogger(__name__)
 
 def get_postgres_dsn() -> str:
     """Build PostgreSQL connection string from environment variables."""
-    pg_user = os.getenv("POSTGRES_USER")
-    pg_pwd = os.getenv("POSTGRES_PASSWORD")
-    pg_host = os.getenv("POSTGRES_HOST")
-    pg_port = os.getenv("POSTGRES_PORT")
-    pg_db = os.getenv("POSTGRES_DB")
-
+    pg_user = os.getenv("POSTGRES_KAFKA_USER")
+    pg_pwd = os.getenv("POSTGRES_KAFKA_PASSWORD")
+    pg_host = os.getenv("POSTGRES_KAFKA_HOST")
+    pg_port = os.getenv("POSTGRES_KAFKA_PORT")
+    pg_db = os.getenv("POSTGRES_KAFKA_DB")
     dsn = f"postgresql://{pg_user}:{pg_pwd}@{pg_host}:{pg_port}/{pg_db}"
     logger.info(f"PostgreSQL connection configured for {pg_host}:{pg_port}")
     return dsn

@@ -160,9 +160,8 @@ services:
   # Apache Flink for stream processing
   flink-jobmanager:
     build:
-      context: ../..
-      dockerfile: docker/dockerfiles/Dockerfile.flink_processor
-    image: flink-processor:latest
+      context: ./dockerfiles
+      dockerfile: Dockerfile.flink
     container_name: flink_jobmanager
     ports:
       - "8082:8081"  # Flink Web UI (avoiding conflict with Schema Registry)
@@ -201,8 +200,8 @@ services:
 
   flink-taskmanager:
     build:
-      context: ../..
-      dockerfile: docker/dockerfiles/Dockerfile.flink
+      context: ./dockerfiles
+      dockerfile: Dockerfile.flink
     container_name: flink_taskmanager
     depends_on:
       - flink-jobmanager

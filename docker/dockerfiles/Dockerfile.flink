@@ -10,12 +10,19 @@ RUN apt-get update && \
     ln -s /usr/bin/python3 /usr/bin/python && \
     rm -rf /var/lib/apt/lists/*
 
-# Install PyFlink (must match Flink version)
-RUN pip3 install --no-cache-dir apache-flink==1.18.1
+# Install PyFlink and required dependencies (must match Flink version)
+RUN pip3 install --no-cache-dir \
+    apache-flink==1.18.1 \
+    protobuf \
+    kafka-python
 
-# Create directory for Python jobs
-RUN mkdir -p /opt/flink/usrlib && \
-    chown -R flink:flink /opt/flink/usrlib
+# Create directory for Python jobs and checkpoint directories
+RUN mkdir -p /opt/flink/usrlib \
+    /tmp/flink-checkpoints \
+    /tmp/flink-savepoints && \
+    chown -R flink:flink /opt/flink/usrlib \
+    /tmp/flink-checkpoints \
+    /tmp/flink-savepoints
 
 USER flink
 
