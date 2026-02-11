@@ -1,3 +1,10 @@
+{{
+    config(
+        materialized='view',
+        tags=['intermediate']
+    )
+}}
+
 with geo_deduplicated as (
     select
         geolocation_zip_code_prefix,

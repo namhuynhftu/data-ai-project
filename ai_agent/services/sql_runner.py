@@ -3,13 +3,16 @@
 import os
 from typing import List, Dict, Any, Optional
 from enum import Enum
+from pathlib import Path
 import snowflake.connector
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project config
+root_path = Path(__file__).parent.parent.parent
+config_path = root_path / "config" / "app" / "development.env"
+load_dotenv(str(config_path))
 
 
 class DatabaseType(str, Enum):
@@ -243,7 +246,7 @@ class SQLRunner:
             query = """
             SELECT table_name, column_name, data_type
             FROM information_schema.columns
-            WHERE table_schema = 'streaming'
+            WHERE table_schema = 'kafka_streaming'
             ORDER BY table_name, ordinal_position
             """
             return self.execute_postgres(query, max_rows=1000)

@@ -1,6 +1,6 @@
 {{
   config(
-    tags=['fact']
+    tags=['mart', 'fact']
     )
 }}
 select

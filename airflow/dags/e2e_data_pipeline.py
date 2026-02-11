@@ -65,8 +65,8 @@ def get_snowflake_config(snow_conn):
 
 @dag(
     dag_id="e2e_batch_elt_pipeline",
-    schedule="0 2 * * *",  # Daily at 2 AM
-    start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
+    schedule="0 2 * * *",  # Daily at 2 AM local time
+    start_date=pendulum.datetime(2024, 1, 1, tz="local"),
     catchup=False,
     tags=["elt", "batch", "mysql", "minio", "snowflake", "dbt", "data-masking"],
     max_active_runs=1,
@@ -246,6 +246,12 @@ def e2e_batch_elt_pipeline():
             # Step 3: Load to Snowflake via internal stage
             print(f"  Loading to Snowflake...")
             extracted_data["minio_file_info"] = minio_result
+            
+            # Add ingestion timestamp for Snowflake
+            from datetime import datetime
+            extracted_data["add_ingestion_column"] = True
+            extracted_data["ingestion_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             snowflake_result = load_minio_to_snowflake_via_stage_direct(extracted_data)
             print(f"  Loaded {snowflake_result['total_rows_loaded']:,} rows to Snowflake")
             

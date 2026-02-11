@@ -3,7 +3,11 @@
 import os
 from typing import List, Optional
 from pathlib import Path
-from langchain_community.vectorstores import Chroma
+try:
+    from langchain_chroma import Chroma
+except ImportError:
+    # Fallback to old import if langchain-chroma not installed
+    from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from services.embeddings import get_embedding_service
 
@@ -50,8 +54,7 @@ class VectorStoreService:
         # Add documents to vector store
         ids = self.vector_store.add_documents(documents)
         
-        # Persist changes
-        self.vector_store.persist()
+        # Note: langchain-chroma auto-persists, no need to call persist()
         
         print(f"Added {len(documents)} documents to vector store")
         return ids
