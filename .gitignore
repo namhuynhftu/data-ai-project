@@ -11,7 +11,9 @@ __pycache__/
 .vars
 
 # Logs
-*.log   
+*.log
+logs/
+airflow/logs/
 
 # UV/Python virtual environment
 .venv/

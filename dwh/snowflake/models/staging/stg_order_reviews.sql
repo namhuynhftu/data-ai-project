@@ -1,12 +1,19 @@
 {{
     config(
-        materialized='view',
+        materialized='incremental',
+        unique_key='review_id',
+        on_schema_change='sync_all_columns',
+        incremental_strategy='merge',
         tags=['staging']
     )
 }}
 
 with source as (
     select * from {{ source('raw_data', 'olist_order_reviews_dataset') }}
+    {% if is_incremental() %}
+    -- Only fetch new/updated reviews from raw layer
+    where review_creation_date >= dateadd(day, -7, (select max(review_creation_date) from {{ this }}))
+    {% endif %}
 ),
 
 renamed as (

@@ -4,7 +4,7 @@ if __name__ == "__main__":
         topics=[
             "postgres.streaming.users",
             "postgres.streaming.transactions",
-            "postgres.streaming.detailed_transactions",
+            "postgres.streaming.detailed_transactions"
         ]
     )
     sink.run()

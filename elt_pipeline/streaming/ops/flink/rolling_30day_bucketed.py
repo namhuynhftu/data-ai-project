@@ -29,7 +29,8 @@ THRESHOLD_AMOUNT = 3000.00
 BUCKET_SIZE_DAYS = 1  # Daily buckets (30 buckets total)
 KAFKA_BOOTSTRAP = "kafka:9092"
 KAFKA_TOPIC = "postgres.streaming.transactions.json"  # JSON topic from converter
-KAFKA_GROUP_ID = "pyflink-bucketed-30day-v5"  # New group to start fresh
+KAFKA_GROUP_ID = "pyflink-bucketed-30day-v6"  # New group to start fresh
+POSTGRES_URL = "jdbc:postgresql://postgres_streaming:5432/streaming_db"
 POSTGRES_USER = "user"
 POSTGRES_PASSWORD = "password"
 

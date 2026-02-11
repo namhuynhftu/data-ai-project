@@ -1,0 +1,35 @@
+# dbt
+target/
+dbt_packages/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# dbt profiles (contains sensitive information)
+profiles.yml
+
+# Environment variables
+.env
+.env.*
+
+# Private keys and secrets
+.secrets/
+*.p8
+*.pem
+*.key
+
+# Secret files
+.secret/
