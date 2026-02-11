@@ -21,5 +21,5 @@ from {{ ref('int_reviews_cleaned') }} as r
 {% if is_incremental() %}
     -- Incremental logic: only process orders modified since last run
     where
-        r.review_creation_date > (select max(review_creation_date) as max_review_date from {{ this }})
+        r.review_creation_date > dateadd(day, -7, (select max(review_creation_date) from {{ this }}))
 {% endif %}
